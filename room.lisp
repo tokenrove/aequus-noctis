@@ -391,10 +391,10 @@ paints from back to front."
 
 ;;; XXX this will go elsewhere
 
-(defun check-room-change ()
+(defun check-room-change (actor)
   (when (plusp *exit-counter*) (decf *exit-counter*))
   (when (and *magic-exit-hack* (zerop *exit-counter*))
-    (let* ((old-y (iso-point-y (actor-position *camera-follow*)))
+    (let* ((old-y (iso-point-y (actor-position actor)))
 	   (point #I((* (caadr *magic-exit-hack*) +tile-size+)
 		     old-y
 		     (* (cdadr *magic-exit-hack*) +tile-size+)))

@@ -8,8 +8,7 @@
 	   #:quarter
 	   #:iso-project-point
 	   ;; XXX shouldn't be here
-	   #:*camera*
-	   #:*camera-follow*
+	   #:update-camera
 	   #:*magic-exit-hack*
 	   #:*exit-counter*
 	   ;; actor

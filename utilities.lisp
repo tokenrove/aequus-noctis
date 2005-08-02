@@ -5,9 +5,17 @@
 (in-package :aequus-noctis)
 
 (defvar *camera* (cons 100 140))
-(defvar *camera-follow*)
 (defvar *magic-exit-hack* nil)
 (defvar *exit-counter* 0)
+
+
+(defun update-camera (actor)
+  (multiple-value-bind (x y)
+      (iso-project-point (actor-position actor))
+    (decf x (equinox:half (fetus:display-width)))
+    (decf y (equinox:half (fetus:display-height)))
+    (setf (car *camera*) (- x)
+	  (cdr *camera*) (- y))))
 
 
 (defun debugging-line-draw (point-1 point-2 origin)
