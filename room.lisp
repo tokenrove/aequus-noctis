@@ -314,30 +314,29 @@ paints from back to front."
 (defun make-wall-object (x z)
   (let ((objects *wall-objects*))
     (unless (gethash (position-hash-key x z) objects)
-      (let ((wall (make-instance 'actor)))
+      (let ((wall (make-instance 'actor :type :wall)))
 	(setf (actor-position wall) #I((* x +tile-size+) 0
-				       (* z +tile-size+)))
-	(setf (actor-box wall)
+				       (* z +tile-size+))
+	      (actor-box wall)
 	      (make-box :position #I(0 0 0)
 			:dimensions #I(+tile-size+
 				       *room-highest-point*
-				       +tile-size+)))
-	(setf (gethash (position-hash-key x z) objects) wall)))
+				       +tile-size+))
+	      (gethash (position-hash-key x z) objects) wall)))
     (gethash (position-hash-key x z) objects)))
 
 (defvar *floor-objects* (make-hash-table))
 (defun make-floor-object (x z)
   (let ((objects *floor-objects*))
     (unless (gethash (position-hash-key x z) objects)
-      (let ((floor (make-instance 'actor)))
+      (let ((floor (make-instance 'actor :type :floor)))
 	(setf (actor-position floor) #I((* x +tile-size+) -16
-					(* z +tile-size+)))
-	(setf (actor-box floor)
-	      (make-box :position #I(0 0 0)
-			:dimensions #I(+tile-size+
-				       16
-				       +tile-size+)))
-	(setf (gethash (position-hash-key x z) *floor-objects*) floor)))
+					(* z +tile-size+))
+	      (actor-box floor) (make-box :position #I(0 0 0)
+					  :dimensions #I(+tile-size+
+							 16
+							 +tile-size+))
+	      (gethash (position-hash-key x z) *floor-objects*) floor)))
     (gethash (position-hash-key x z) objects)))
 
 
@@ -345,16 +344,16 @@ paints from back to front."
 (defun make-ceiling-object (x z)
   (let ((objects *ceiling-objects*))
     (unless (gethash (position-hash-key x z) objects)
-      (let ((ceiling (make-instance 'actor)))
+      (let ((ceiling (make-instance 'actor :type :ceiling)))
 	(setf (actor-position ceiling) #I((* x +tile-size+)
 					  *room-highest-point*
-					  (* z +tile-size+)))
-	(setf (actor-box ceiling)
+					  (* z +tile-size+))
+	      (actor-box ceiling)
 	      (make-box :position #I(0 0 0)
 			:dimensions #I(+tile-size+
 				       64
-				       +tile-size+)))
-	(setf (gethash (position-hash-key x z) objects) ceiling)))
+				       +tile-size+))
+	      (gethash (position-hash-key x z) objects) ceiling)))
     (gethash (position-hash-key x z) objects)))
 
 
@@ -378,7 +377,7 @@ paints from back to front."
     (setf (gethash (cdr block) *room-block-actors*) actor)))
 
 (defun make-slice-object (archetype x y z)
-  (let ((block (make-instance 'actor)))
+  (let ((block (make-instance 'actor :type :block)))
     (setf (actor-position block) #I((* x +tile-size+)
 				    (* y *slice-height-increment*)
 				    (* z +tile-size+)))

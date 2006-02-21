@@ -14,7 +14,7 @@
 
 ;; XXX add documentation for these slots.
 (defclass actor ()
-  ((type :reader actor-type)
+  ((type :reader actor-type :initarg :type :initform (error "Actors need types."))
    (sprite :accessor actor-sprite)
    (position :accessor actor-position)
    (velocity :accessor actor-velocity)
@@ -33,9 +33,6 @@ game world.")
 (defvar *actor-id-counter* 0
   "Actor unique ID counter, should always contain an ID which is not
 currently in use by any live actors.")
-
-(defun for-each-actor (manager function)
-  (maphash function (actor-manager-map manager)))
 
 (defun initialize-actor-data (&optional (archetypes-file "archetypes.sexp"))
   (with-open-file (stream archetypes-file)
@@ -73,12 +70,11 @@ many parameters of an actor.")
 
 Creates (and returns) a new ACTOR instance, reading default member
 values from *ACTOR-ARCHETYPES*."
-  (let ((actor (make-instance 'actor))
+  (let ((actor (make-instance 'actor :type name))
 	(archetype (cdr (find name *actor-archetypes* :key #'car))))
     (when (null archetype)
       (error "archetype ~A not found" name))
-    (setf (slot-value actor 'type) name
-	  (actor-position actor) position
+    (setf (actor-position actor) position
 	  (actor-handler actor) (funcall (cadr (assoc :handler archetype)))
 	  (actor-contact-surface actor) nil
 	  (actor-facing actor) :east
@@ -174,23 +170,32 @@ events."
     (declare (ignore id))
     (let ((pressed-p nil))
       (when (fetus:event-pressedp +ev-up+)
+	(setf (actor-facing player) :north)
 	(apply-impulse player :x 0.5)
 	(setf pressed-p t)
 	(fetus:set-sprite-animation (actor-sprite player) :walk-north))
       (when (fetus:event-pressedp +ev-down+)
+	(setf (actor-facing player) :south)
 	(apply-impulse player :x -0.5)
 	(setf pressed-p t)
 	(fetus:set-sprite-animation (actor-sprite player) :walk-south))
       (when (fetus:event-pressedp +ev-left+)
+	(setf (actor-facing player) :west)
 	(apply-impulse player :z 0.5)
 	(setf pressed-p t)
 	(fetus:set-sprite-animation (actor-sprite player) :walk-west))
       (when (fetus:event-pressedp +ev-right+)
+	(setf (actor-facing player) :east)
 	(apply-impulse player :z -0.5)
 	(setf pressed-p t)
 	(fetus:set-sprite-animation (actor-sprite player) :walk-east))
       (unless pressed-p
-	(fetus:set-sprite-animation (actor-sprite player) :default)))
+	(fetus:set-sprite-animation (actor-sprite player)
+				    (case (actor-facing player)
+				      (:east :stand-east)
+				      (:west :stand-west)
+				      (:north :stand-north)
+				      (:south :stand-south)))))
     (when (and (fetus:event-pressedp +ev-button-a+)
 	       (actor-contact-surface player))
       (apply-impulse player :y 6))))
