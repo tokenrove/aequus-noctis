@@ -23,23 +23,23 @@ forever as friction becomes delegated to surfaces.")
   "Update simple kinematics, friction, collision response on the given
 actor."
   (dolist (axis '(:x :y :z))
-    (clampf (iso-point-component axis (actor-velocity a))
+    (clampf (iso-point-component axis (velocity-of a))
 	    *terminal-velocity*)
-    (incf (iso-point-component axis (actor-position a))
-	  (iso-point-component axis (actor-velocity a))))
+    (incf (iso-point-component axis (position-of a))
+	  (iso-point-component axis (velocity-of a))))
 
   (detect-collisions a)
 
-  (let ((friction (if (actor-contact-surface a) *ground-friction* *air-friction*)))
-    (sinkf (iso-point-x (actor-velocity a)) friction)
-    (sinkf (iso-point-z (actor-velocity a)) friction))
-  (incf (iso-point-y (actor-velocity a)) *gravity*))
+  (let ((friction (if (contact-surface-of a) *ground-friction* *air-friction*)))
+    (sinkf (iso-point-x (velocity-of a)) friction)
+    (sinkf (iso-point-z (velocity-of a)) friction))
+  (incf (iso-point-y (velocity-of a)) *gravity*))
 
 
 (defun detect-collisions (alice)
-  (when (and (actor-contact-surface alice)
-	     (not (penetrating-p alice (actor-contact-surface alice))))
-    (setf (actor-contact-surface alice) nil))
+  (when (and (contact-surface-of alice)
+	     (not (penetrating-p alice (contact-surface-of alice))))
+    (setf (contact-surface-of alice) nil))
 
   (maphash (lambda (unused bob) (declare (ignore unused)) (actor<->actor-collision alice bob))
 	   *actor-map*)
@@ -63,9 +63,9 @@ actor."
 		   
       ;; make bob the floor.
       (when (and (eql lsa :y)
-		 (> (iso-point-y (actor-position alice))
-		    (iso-point-y (actor-position bob))))
-	(setf (actor-contact-surface alice) bob))
+		 (> (iso-point-y (position-of alice))
+		    (iso-point-y (position-of bob))))
+	(setf (contact-surface-of alice) bob))
 
       (awhen (find (actor-type bob) *actor-archetypes* :key #'car)
 	(funcall (cadr (assoc :contact (cdr it)))
@@ -74,21 +74,21 @@ actor."
 	
 (defun collision-response (alice lsa impulse)
   "Affects collision response on ALICE."
-  (incf (iso-point-component lsa (actor-velocity alice))
+  (incf (iso-point-component lsa (velocity-of alice))
 	(iso-point-component lsa impulse))
   (dolist (axis (set-difference '(:x :y :z) (list lsa)))
-    (decf (iso-point-component axis (actor-position alice))
+    (decf (iso-point-component axis (position-of alice))
 	  (iso-point-component axis impulse))))
 
 (defun room-collision-detection (alice)
-  (let ((w (ceiling (iso-point-x (box-dimensions (actor-box alice)))
+  (let ((w (ceiling (iso-point-x (box-dimensions (box-of alice)))
 		    +tile-size+))
-	(d (ceiling (iso-point-z (box-dimensions (actor-box alice)))
+	(d (ceiling (iso-point-z (box-dimensions (box-of alice)))
 		    +tile-size+)))
-    (do* ((base-z (floor (iso-point-z (actor-position alice)) +tile-size+))
+    (do* ((base-z (floor (iso-point-z (position-of alice)) +tile-size+))
 	  (z base-z (1+ z)))
 	 ((> z (+ base-z d)))
-      (do* ((base-x (floor (iso-point-x (actor-position alice)) +tile-size+))
+      (do* ((base-x (floor (iso-point-x (position-of alice)) +tile-size+))
 	    (x base-x (1+ x)))
 	   ((> x (+ base-x w)))
 	(try-border-collision alice x z)))))
@@ -118,12 +118,12 @@ actor."
       (when (actor<->actor-collision alice wall-obj)
 	  (check-exit x z))))
 
-  (when (<= (iso-point-y (actor-position alice)) *room-lowest-point*)
+  (when (<= (iso-point-y (position-of alice)) *room-lowest-point*)
     (let ((floor-obj (make-floor-object x z)))
       (actor<->actor-collision alice floor-obj)))
 
-  (when (>= (+ (iso-point-y (actor-position alice))
-	       (iso-point-y (box-dimensions (actor-box alice))))
+  (when (>= (+ (iso-point-y (position-of alice))
+	       (iso-point-y (box-dimensions (box-of alice))))
 	    *room-highest-point*)
     (let ((ceiling-obj (make-ceiling-object x z)))
       (actor<->actor-collision alice ceiling-obj))))
@@ -139,11 +139,11 @@ actor."
   (defmacro try-penetration-resolution (&body body)
     `(dolist (axis '(:x :y :z))
       (let* ((f (iso-point-component-function-of axis))
-	     (amin (iso-point-component axis (actor-position alice)))
-	     (bmin (iso-point-component axis (actor-position bob))))
+	     (amin (iso-point-component axis (position-of alice)))
+	     (bmin (iso-point-component axis (position-of bob))))
 	(when (extents-overlap-p
-	       amin (+ amin (funcall f (box-dimensions (actor-box alice))))
-	       bmin (+ bmin (funcall f (box-dimensions (actor-box bob)))))
+	       amin (+ amin (funcall f (box-dimensions (box-of alice))))
+	       bmin (+ bmin (funcall f (box-dimensions (box-of bob)))))
 	  ,@body)))))
 
 ;; eventually this will use a cool trick like in game physics section
@@ -152,9 +152,9 @@ actor."
   (let ((impulse #I(0 0 0)))
     ;; handle fractional component first.
     (try-penetration-resolution
-     (multiple-value-bind (int frac) (floor (funcall f (actor-velocity alice)))
+     (multiple-value-bind (int frac) (floor (funcall f (velocity-of alice)))
        (declare (ignore int))
-       (decf (iso-point-component axis (actor-position alice)) frac)
+       (decf (iso-point-component axis (position-of alice)) frac)
        (decf (iso-point-component axis impulse) frac)))
 
     ;; pixel by pixel step, otherwise.
@@ -162,35 +162,35 @@ actor."
 	((or (not (penetrating-p alice bob))
 	     (zerop max-iterations)))
       (try-penetration-resolution
-       (awhen (sign-of (funcall f (actor-velocity alice)))
-	 (decf (iso-point-component axis (actor-position alice)) it)
+       (awhen (sign-of (funcall f (velocity-of alice)))
+	 (decf (iso-point-component axis (position-of alice)) it)
 	 (decf (iso-point-component axis impulse) it))))
     
     (values impulse (find-axis-of-separation alice bob))))
 
 
 (defun apply-impulse (actor &key (x 0.0) (y 0.0) (z 0.0))
-  (incf (iso-point-x (actor-velocity actor)) x)
-  (incf (iso-point-y (actor-velocity actor)) y)
-  (incf (iso-point-z (actor-velocity actor)) z))
+  (incf (iso-point-x (velocity-of actor)) x)
+  (incf (iso-point-y (velocity-of actor)) y)
+  (incf (iso-point-z (velocity-of actor)) z))
 
 
 (defun find-axis-of-separation (alice bob)
   (dolist (axis '(:y :z :x))	; note order: prefer y to z or x.
     (let* ((f (iso-point-component-function-of axis))
-	   (amin (funcall f (actor-position alice)))
-	   (bmin (funcall f (actor-position bob))))
+	   (amin (funcall f (position-of alice)))
+	   (bmin (funcall f (position-of bob))))
       (unless (extents-overlap-p
-	       amin (+ amin (funcall f (box-dimensions (actor-box alice))))
-	       bmin (+ bmin (funcall f (box-dimensions (actor-box bob)))))
+	       amin (+ amin (funcall f (box-dimensions (box-of alice))))
+	       bmin (+ bmin (funcall f (box-dimensions (box-of bob)))))
 	(return axis)))))
 
 (defun penetrating-p (alice bob)
   (declare (type actor alice bob))
-  (actor-pen-p (actor-position alice)
-	       (box-dimensions (actor-box alice))
-	       (actor-position bob)
-	       (box-dimensions (actor-box bob))))
+  (actor-pen-p (position-of alice)
+	       (box-dimensions (box-of alice))
+	       (position-of bob)
+	       (box-dimensions (box-of bob))))
 
 (defun actor-pen-p (a-pos a-dim b-pos b-dim)
   (declare (type iso-point a-pos a-dim b-pos b-dim))

@@ -2,6 +2,7 @@
 (defpackage :aequus-noctis
   (:nicknames :equinox)
   (:use :cl :anaphora :game-fetus-alpha)
+  (:shadow #:room)
   (:export #:sinkf
 	   #:clampf
 	   #:half

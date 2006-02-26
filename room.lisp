@@ -110,8 +110,8 @@
 
 
 (defclass room-tile ()
-  ((archetype :accessor tile-archetype)
-   (image :accessor tile-image)))
+  ((archetype :accessor archetype-of)
+   (image :accessor image-of)))
 
 (defun initialize-tiles ()
   ;; go through  each tile, load image.
@@ -119,8 +119,8 @@
        (archetype *tile-archetypes* (cdr archetype)))
       ((null archetype))
     (let ((tile (make-instance 'room-tile)))
-      (setf (tile-archetype tile) (car archetype))
-      (setf (tile-image tile)
+      (setf (archetype-of tile) (car archetype))
+      (setf (image-of tile)
 	    (when (assoc :image (cdar archetype))
 	      (load-image (cadr (assoc :image (cdar archetype)))
 			  t)))
@@ -133,7 +133,7 @@
 
 ;;; XXX the idea of player-spawn, exits, and name are going to be moved to
 ;;; the scenario logic.
-(defclass iso-room ()
+(defclass room ()
   ((floor :accessor room-floor)
    (blocks :accessor room-blocks)
    (exits :accessor room-exits)
@@ -142,10 +142,8 @@
    (name :accessor room-name)
    (player-spawn :accessor room-player-spawn))
 ;   )
-  (:documentation "ISO-ROOM encapsulates the concept of a location; a
-floor, fixed blocks (set), and actors.  This class is called ISO-ROOM
-to avoid conflict with the CL symbol ROOM, but all of its associated
-methods drop the ISO qualifier."))
+  (:documentation "ROOM encapsulates the concept of a location; a
+floor, fixed blocks (set), and actors."))
 
 (defun load-room (name sprite-manager &key (spawn-actors-p t))
   "Loads the named room from *ROOM-SET*, into *CURRENT-ROOM*.
@@ -154,7 +152,7 @@ Prerenders floor, adds fixed blocks to SPRITE-MANAGER, and optionally
   (setf *wall-objects* (make-hash-table)
 	*floor-objects* (make-hash-table)
 	*ceiling-objects* (make-hash-table))
-  (let ((room (make-instance 'iso-room))
+  (let ((room (make-instance 'room))
 	(archetype (assoc name *room-set*)))
     (assert archetype () "Couldn't find room ~A." name)
     (setf (room-floor room) (cdr (assoc :floor (cdr archetype)))
@@ -173,7 +171,7 @@ Prerenders floor, adds fixed blocks to SPRITE-MANAGER, and optionally
 					  sprite-manager)
 	      (room-actors room))))
     ;; XXX deal with physics constants here.
-    (use-image-palette (tile-image (aref *tiles* 1)))
+    (use-image-palette (image-of (aref *tiles* 1)))
 
     (paint-floor)
     (setf *room-block-actors* (make-hash-table :test 'equal))
@@ -296,21 +294,22 @@ paints from back to front."
 		(iso-point-y pt) -16
 		(iso-point-z pt) (* +tile-size+ z))
 	  (multiple-value-bind (u v) (iso-project-point pt)
-	    (let* ((sprite (cdr (assoc :sprite (cdr (tile-archetype
+	    (let* ((sprite (cdr (assoc :sprite (cdr (archetype-of
 						     (aref *tiles* tile))))))
 		   (blit-offset (cadr (assoc :blit-offset sprite))))
 	      (decf u (car blit-offset))
 	      (decf v (cdr blit-offset))
 	      (incf u h-offs)
 	      (incf v v-offs)
-	      (blit-image (tile-image (aref *tiles* tile)) u v
+	      (blit-image (image-of (aref *tiles* tile)) u v
 			  :destination buffer))))))))
 
 
 (defun position-hash-key (x z)
   (+ x (* z (1+ (max (room-depth) (room-width))))))
 
-(defvar *wall-objects* (make-hash-table))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defvar *wall-objects* (make-hash-table)))
 (defun make-wall-object (x z)
   (let ((objects *wall-objects*))
     (unless (gethash (position-hash-key x z) objects)
@@ -325,7 +324,8 @@ paints from back to front."
 	      (gethash (position-hash-key x z) objects) wall)))
     (gethash (position-hash-key x z) objects)))
 
-(defvar *floor-objects* (make-hash-table))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defvar *floor-objects* (make-hash-table)))
 (defun make-floor-object (x z)
   (let ((objects *floor-objects*))
     (unless (gethash (position-hash-key x z) objects)
@@ -340,7 +340,8 @@ paints from back to front."
     (gethash (position-hash-key x z) objects)))
 
 
-(defvar *ceiling-objects* (make-hash-table))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defvar *ceiling-objects* (make-hash-table)))
 (defun make-ceiling-object (x z)
   (let ((objects *ceiling-objects*))
     (unless (gethash (position-hash-key x z) objects)
@@ -359,10 +360,11 @@ paints from back to front."
 
 ;;;; BLOCKS
 
-(defvar *room-block-actors*)
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defvar *room-block-actors*))
 
 (defun give-block-sprite (block sprite-manager)
-  (let* ((arch (cdr (tile-archetype (aref *tiles* (first block)))))
+  (let* ((arch (cdr (archetype-of (aref *tiles* (first block)))))
 	 (actor (make-slice-object arch (second block)
 				   (third block) (fourth block)))
 	 (sprite (fetus:new-sprite-from-alist (cdr (assoc :sprite arch)))))

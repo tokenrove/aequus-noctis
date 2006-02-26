@@ -15,13 +15,13 @@
 ;; XXX add documentation for these slots.
 (defclass actor ()
   ((type :reader actor-type :initarg :type :initform (error "Actors need types."))
-   (sprite :accessor actor-sprite)
-   (position :accessor actor-position)
-   (velocity :accessor actor-velocity)
-   (box :accessor actor-box)
-   (handler :accessor actor-handler)
-   (contact-surface :accessor actor-contact-surface)
-   (facing :accessor actor-facing))
+   (sprite :accessor sprite-of)
+   (position :accessor position-of)
+   (velocity :accessor velocity-of)
+   (box :accessor box-of)
+   (handler :accessor handler-of)
+   (contact-surface :accessor contact-surface-of)
+   (facing :accessor facing-of))
   (:documentation "An ACTOR is an object that exists at the game-logic
 level persistently.  Actors have handlers that are called at each time
 slice in the game, handlers that are called in response to collisions,
@@ -74,18 +74,18 @@ values from *ACTOR-ARCHETYPES*."
 	(archetype (cdr (find name *actor-archetypes* :key #'car))))
     (when (null archetype)
       (error "archetype ~A not found" name))
-    (setf (actor-position actor) position
-	  (actor-handler actor) (funcall (cadr (assoc :handler archetype)))
-	  (actor-contact-surface actor) nil
-	  (actor-facing actor) :east
-	  (actor-sprite actor) (fetus:new-sprite-from-alist
+    (setf (position-of actor) position
+	  (handler-of actor) (funcall (cadr (assoc :handler archetype)))
+	  (contact-surface-of actor) nil
+	  (facing-of actor) :east
+	  (sprite-of actor) (fetus:new-sprite-from-alist
 				(cdr (assoc :sprite archetype))))
-    (fetus:add-sprite-to-manager sprite-manager (actor-sprite actor))
+    (fetus:add-sprite-to-manager sprite-manager (sprite-of actor))
     (destructuring-bind ((x y z) (w h d)) (cdr (assoc :box archetype))
-      (setf (actor-box actor)
+      (setf (box-of actor)
 	    (make-box :position (make-iso-point :x x :y y :z z)
 		    :dimensions (make-iso-point :x w :y h :z d))))
-    (setf (actor-velocity actor) (make-iso-point))
+    (setf (velocity-of actor) (make-iso-point))
     (manage-actor actor)
     actor))
 
@@ -105,10 +105,10 @@ with the actor manager."
 
 	     ;; XXX update contact handlers
 	     ;; XXX camera
-	     (update-sprite-coords (actor-sprite actor)
-				   (actor-position actor)
+	     (update-sprite-coords (sprite-of actor)
+				   (position-of actor)
 				   actor)
-	     (funcall (actor-handler actor) id actor))
+	     (funcall (handler-of actor) id actor))
 	   *actor-map*))
 
 
@@ -124,20 +124,20 @@ with the actor manager."
 
 
 (defun isometric-sprite-cmp (a b)
-  (let ((adim (box-dimensions (actor-box a)))
-	(bdim (box-dimensions (actor-box b))))
+  (let ((adim (box-dimensions (box-of a)))
+	(bdim (box-dimensions (box-of b))))
     ;; if z overlap, then do more intensive tests.
     ;; otherwise, sort by z.
-    (if (extents-overlap-p #1=(iso-point-z (actor-position a))
+    (if (extents-overlap-p #1=(iso-point-z (position-of a))
 			   (+ #1# (iso-point-z adim))
-			   #2=(iso-point-z (actor-position b))
+			   #2=(iso-point-z (position-of b))
 			   (+ #2# (iso-point-z bdim)))
-	(if (extents-overlap-p #3=(iso-point-x (actor-position a))
+	(if (extents-overlap-p #3=(iso-point-x (position-of a))
 			       (+ #3# (iso-point-x adim))
-			       #4=(iso-point-x (actor-position b))
+			       #4=(iso-point-x (position-of b))
 			       (+ #4# (iso-point-x bdim)))
-	    (<= (iso-point-y (actor-position a))
-		(iso-point-y (actor-position b)))
+	    (<= (iso-point-y (position-of a))
+		(iso-point-y (position-of b)))
 	    (>= #3# #4#))
 	(>= #1# #2#))))
 
@@ -153,14 +153,14 @@ with the actor manager."
   (let ((direction :up))
     (lambda (id actor)
       (declare (ignore id))
-      (when (actor-contact-surface actor)
+      (when (contact-surface-of actor)
 	(setf direction :up))
       (if (eql direction :up)
-	  (if (< (iso-point-y (actor-position actor)) 42)
-	      (setf (iso-point-y (actor-velocity actor)) 0.7)
+	  (if (< (iso-point-y (position-of actor)) 42)
+	      (setf (iso-point-y (velocity-of actor)) 0.7)
 	      (setf direction :down))
-	  (if (> (iso-point-y (actor-position actor)) 0)
-	      (setf (iso-point-y (actor-velocity actor)) -0.2)
+	  (if (> (iso-point-y (position-of actor)) 0)
+	      (setf (iso-point-y (velocity-of actor)) -0.2)
 	      (setf direction :up))))))
 
 (defun create-human-input-handler ()
@@ -170,34 +170,34 @@ events."
     (declare (ignore id))
     (let ((pressed-p nil))
       (when (fetus:event-pressedp +ev-up+)
-	(setf (actor-facing player) :north)
+	(setf (facing-of player) :north)
 	(apply-impulse player :x 0.5)
 	(setf pressed-p t)
-	(fetus:set-sprite-animation (actor-sprite player) :walk-north))
+	(fetus:set-sprite-animation (sprite-of player) :walk-north))
       (when (fetus:event-pressedp +ev-down+)
-	(setf (actor-facing player) :south)
+	(setf (facing-of player) :south)
 	(apply-impulse player :x -0.5)
 	(setf pressed-p t)
-	(fetus:set-sprite-animation (actor-sprite player) :walk-south))
+	(fetus:set-sprite-animation (sprite-of player) :walk-south))
       (when (fetus:event-pressedp +ev-left+)
-	(setf (actor-facing player) :west)
+	(setf (facing-of player) :west)
 	(apply-impulse player :z 0.5)
 	(setf pressed-p t)
-	(fetus:set-sprite-animation (actor-sprite player) :walk-west))
+	(fetus:set-sprite-animation (sprite-of player) :walk-west))
       (when (fetus:event-pressedp +ev-right+)
-	(setf (actor-facing player) :east)
+	(setf (facing-of player) :east)
 	(apply-impulse player :z -0.5)
 	(setf pressed-p t)
-	(fetus:set-sprite-animation (actor-sprite player) :walk-east))
+	(fetus:set-sprite-animation (sprite-of player) :walk-east))
       (unless pressed-p
-	(fetus:set-sprite-animation (actor-sprite player)
-				    (case (actor-facing player)
+	(fetus:set-sprite-animation (sprite-of player)
+				    (case (facing-of player)
 				      (:east :stand-east)
 				      (:west :stand-west)
 				      (:north :stand-north)
 				      (:south :stand-south)))))
     (when (and (fetus:event-pressedp +ev-button-a+)
-	       (actor-contact-surface player))
+	       (contact-surface-of player))
       (apply-impulse player :y 6))))
 
 (defun create-monster-handler ()
@@ -208,12 +208,12 @@ events."
 
 (defun pushable-block-handler (us them face impulse)
   (declare (ignore them))
-  (decf (iso-point-component face (actor-velocity us))
+  (decf (iso-point-component face (velocity-of us))
 	(iso-point-component face impulse)))
 
 (defun player-contact-handler (us them face impulse)
   (declare (ignore them))
-  (decf (iso-point-component face (actor-velocity us))
+  (decf (iso-point-component face (velocity-of us))
 	(iso-point-component face impulse)))
 
 (defun monster-contact-handler (us them face impulse)
