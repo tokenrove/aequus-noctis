@@ -33,9 +33,11 @@
 	   ;; room
 	   #:initialize-tiles
 	   #:initialize-room-data
-	   #:load-room
+	   #:load-room-int
 	   #:redraw
 	   #:room
 	   #:update-actors
+	   #:width-of
+	   #:depth-of
 	   ;; room-editor
 	   #:room-editor))

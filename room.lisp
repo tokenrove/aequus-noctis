@@ -135,9 +135,9 @@
 ;;; the scenario logic.
 (defclass room ()
   ((floor :accessor floor-of)
-   (blocks :accessor room-blocks)
+   (blocks :accessor blocks-of)
    (actors :accessor room-actors)
-   (archetype :accessor room-archetype)
+   (archetype :accessor archetype-of)
    (name :accessor room-name))
   (:documentation "ROOM encapsulates the concept of a location; a
 floor, fixed blocks (set), and actors."))
@@ -152,9 +152,9 @@ Prerenders floor, adds fixed blocks to SPRITE-MANAGER, and optionally
   (let ((archetype (assoc name *room-set*)))
     (assert archetype () "Couldn't find room ~A." name)
     (setf (floor-of room) (cdr (assoc :floor (cdr archetype)))
-	  (room-blocks room) (cdr (assoc :blocks (cdr archetype)))
+	  (blocks-of room) (cdr (assoc :blocks (cdr archetype)))
 	  (room-name room) (cdr (assoc :name (cdr archetype)))
-	  (room-archetype room) archetype
+	  (archetype-of room) archetype
 	  (room-actors room) nil)
     (when spawn-actors-p
       (dolist (actor (cdr (assoc :actors (cdr archetype))))
@@ -167,7 +167,7 @@ Prerenders floor, adds fixed blocks to SPRITE-MANAGER, and optionally
 
     (paint-floor room)
     (setf *room-block-actors* (make-hash-table :test 'equal))
-    (dolist (block (room-blocks room))
+    (dolist (block (blocks-of room))
       (give-block-sprite block sprite-manager))
     room))
 

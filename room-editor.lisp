@@ -11,20 +11,22 @@
 
 (defvar *sprite-manager* nil)
 (defvar *default-font* nil)
+(defvar *current-room*)
 
 ;;;; EDITING COMPONENTS
 
 (defun place-floor-tile (cursor tile)
   "Places a floor tile in *CURRENT-ROOM* at the supplied cursor
 position.  Returns T if the floor was modified, NIL otherwise."
-  (let ((orig-tile (aref (room-floor *current-room*)
+  (let ((orig-tile (aref (floor-of *current-room*)
 			 (floor (iso-point-z cursor) +tile-size+)
 			 (floor (iso-point-x cursor) +tile-size+))))
     (unless (= tile orig-tile)
       ;; Note: assumes that version in *room-set* will get modified at
-      ;; the same time, because it shares structure with room-floor,
+      ;; the same time, because it shares structure with floor-of,
       ;; thanks to being a vector.  Not that this matters too much.
-      (setf (aref (room-floor *current-room*)
+      ;; (Also, don't confuse floor with floor-of. ;-))
+      (setf (aref (floor-of *current-room*)
 		  (floor (iso-point-z cursor) +tile-size+)
 		  (floor (iso-point-x cursor) +tile-size+)) tile)
       t)))
@@ -38,14 +40,14 @@ modified, NIL otherwise."
 			     (list +tile-size+ *slice-height-increment*
 				   +tile-size+)))
 	 (actor (gethash point-list *room-block-actors*))
-	 (archblocks (assoc :blocks (cdr (room-archetype *current-room*)))))
+	 (archblocks (assoc :blocks (cdr (archetype-of *current-room*)))))
     (when actor
       (remhash point-list *room-block-actors*)
-      (fetus:remove-sprite-from-manager *sprite-manager* (actor-sprite actor))
+      (fetus:remove-sprite-from-manager *sprite-manager* (sprite-of actor))
       (setf (cdr archblocks)
 	    (delete-if #'(lambda (x) (equal point-list (cdr x)))
 		       (cdr archblocks)))
-      (setf (room-blocks *current-room*) (cdr archblocks))
+      (setf (blocks-of *current-room*) (cdr archblocks))
       t)))
 
 
@@ -59,17 +61,17 @@ remove it.  Returns T if the room was modified, NIL otherwise."
 				(list +tile-size+ *slice-height-increment*
 				      +tile-size+))))
 	 (actor (gethash (cdr block) *room-block-actors*))
-	 (archblocks (assoc :blocks (cdr (room-archetype *current-room*)))))
+	 (archblocks (assoc :blocks (cdr (archetype-of *current-room*)))))
     ;; XXX really, should check if actor is same as our tile, return
     ;; NIL if so.
     (when actor (remove-block cursor))
     (if archblocks
 	(push block (cdr archblocks))
 	(progn
-	  (push (list :blocks block) (cdr (room-archetype *current-room*)))
+	  (push (list :blocks block) (cdr (archetype-of *current-room*)))
 	  (setf archblocks (assoc :blocks
-				  (cdr (room-archetype *current-room*))))))
-    (setf (room-blocks *current-room*) (cdr archblocks))
+				  (cdr (archetype-of *current-room*))))))
+    (setf (blocks-of *current-room*) (cdr archblocks))
     (give-block-sprite block *sprite-manager*)
     t))
 
@@ -89,7 +91,7 @@ must already have been created with FETUS:CREATE-DISPLAY."
   (setf *default-font* (fetus:load-font "other-data/pph.ttf" 18))
   (initialize-tiles)
   (setf *sprite-manager* (fetus:create-sprite-manager #'isometric-sprite-cmp))
-  (load-room room-to-edit *sprite-manager* :spawn-actors-p nil)
+  (setf *current-room* (load-room room-to-edit *sprite-manager* :spawn-actors-p nil))
 
   (do ((entry-mode :blocks)
        (slice-cursor (make-iso-point))
@@ -106,7 +108,7 @@ must already have been created with FETUS:CREATE-DISPLAY."
       ;; mode events; please excuse the silly hardcoded SDL keysyms.
       (cond ((= event (char-code #\q))
 	     (when (or (not unsaved-changes-p)
-		       (editor-yes-no-prompt
+		       (prompt-for-yes-or-no
 			*default-font*
 			"Unsaved changes - really quit? (Y/N)"))
 	       (return)))
@@ -123,16 +125,16 @@ must already have been created with FETUS:CREATE-DISPLAY."
 	    ((= event (char-code #\p))
 	     (if (eql entry-mode :blocks)
 		 (setf cur-tile
-		       (palette-mode *tiles* #'tile-image
-				     (lambda (x) (car (tile-archetype x)))))
+		       (palette-mode *tiles* #'image-of
+				     (lambda (x) (car (archetype-of x)))))
 		 (setf cur-spawn
 		       (palette-mode *actor-archetypes*
-				     (lambda (x) nil)
+				     (lambda (x) (declare (ignore x)) nil)
 				     (lambda (x)
 				       (format nil "~A" (car x)))))))
 
 	    ((= event (char-code #\w))
-	     (when (editor-yes-no-prompt *default-font*
+	     (when (prompt-for-yes-or-no *default-font*
 					 "Really write changes? (Y/N)")
 	       (with-open-file (stream output-file
 				       :direction :output
@@ -144,17 +146,19 @@ must already have been created with FETUS:CREATE-DISPLAY."
 	       (setf unsaved-changes-p nil)
 	       (editor-osd-display-message "Written to ~A." output-file)))
 
+	    ;;; XXX part of DOTF extension
 	    ((= event (char-code #\e))
 	     (edit-exits-dialog))
 
 	    ((= event (char-code #\r))
-	     (when (editor-yes-no-prompt
+	     (when (prompt-for-yes-or-no
 		    *default-font*
 		    (if unsaved-changes-p
 			"Really re-read data? (you have unsaved changes!)"
 			(format nil "Read map data from ~A?" output-file)))
 	       (initialize-room-data output-file)
-	       (load-room room-to-edit *sprite-manager* :spawn-actors-p nil)
+	       (setf *current-room*
+		     (load-room room-to-edit *sprite-manager* :spawn-actors-p nil))
 	       (setf unsaved-changes-p t)
 	       (editor-osd-display-message "Room data freshly read from ~A."
 					   output-file)))
@@ -163,12 +167,14 @@ must already have been created with FETUS:CREATE-DISPLAY."
 		 (= event (char-code #\/)) ; #\? without shift.
 		 (= event 282))		; F1
 	     (room-editor-help))
+
 	    ((= event (char-code #\c))
 	     (let ((dest-room (change-rooms-dialog room-to-edit)))
 	       (fetus:destroy-sprite-manager *sprite-manager*)
 	       (setf *sprite-manager* (fetus:create-sprite-manager
 				       #'isometric-sprite-cmp))
-	       (load-room dest-room *sprite-manager* :spawn-actors-p nil)
+	       (setf *current-room*
+		     (load-room dest-room *sprite-manager* :spawn-actors-p nil))
 	       (setf slice-cursor (make-iso-point))
 	       (editor-osd-display-message "Change to room ~A."
 					   dest-room)))
@@ -188,7 +194,7 @@ must already have been created with FETUS:CREATE-DISPLAY."
 			 *slice-height-increment*))))
 	    ((= event 273)		; up
 	     (unless (>= (ceiling (iso-point-x slice-cursor) +tile-size+)
-			 (1- (room-width)))
+			 (1- (width-of *current-room*)))
 	       (incf (iso-point-x slice-cursor) +tile-size+)))
 	    ((= event 274)		; down
 	     (unless (<= (iso-point-x slice-cursor) 0)
@@ -198,7 +204,7 @@ must already have been created with FETUS:CREATE-DISPLAY."
 	       (decf (iso-point-z slice-cursor) +tile-size+)))
 	    ((= event 276)		; left
 	     (unless (>= (ceiling (iso-point-z slice-cursor) +tile-size+)
-			 (1- (room-depth)))
+			 (1- (depth-of *current-room*)))
 	       (incf (iso-point-z slice-cursor) +tile-size+)))
 
 	    ;; edit events
@@ -229,19 +235,19 @@ must already have been created with FETUS:CREATE-DISPLAY."
 
       (maphash (lambda (id actor)
 		 (declare (ignore id))
-		 (update-sprite-coords (actor-sprite actor)
-				       (actor-position actor)
+		 (update-sprite-coords (sprite-of actor)
+				       (position-of actor)
 				       actor))
 	       *actor-map*)
 
       (when dirty-floor-p
-	(paint-floor)
+	(paint-floor *current-room*)
 	(setf dirty-floor-p nil))
-    (room-redraw)
+    (redraw *current-room*)
     (fetus:update-all-sprites *sprite-manager*)
 
       (dolist (spawn (cdr (assoc :actors
-				 (cdr (room-archetype *current-room*)))))
+				 (cdr (archetype-of *current-room*)))))
 	(let ((arch (cdr (assoc (first spawn) *actor-archetypes*))))
 	  (draw-debug-box (make-box
 			   :position (iso-point-from-list (second spawn))
@@ -354,74 +360,6 @@ must already have been created with FETUS:CREATE-DISPLAY."
 			       (setf (cdr cursor) 0)))))))
 
 
-;;; XXX should cause main editor to note unsaved changes.
-(defun edit-exits-dialog ()
-  (do ((cursor 0)
-       (max-row (length (room-exits *current-room*))))
-      (nil)
-    (fetus:draw-filled-rectangle 8 8 (- (fetus:display-width) 16)
-				 (- (fetus:display-height) 32)
-				 128) ;(gfx-map-rgb 128 128 128)
-    (draw-rectangle 8 8 (- (display-width) 16)
-		    (- (display-height) 32) 32) ;(gfx-map-rgb 32 32 32)
-    (draw-filled-rectangle 11 (+ 10 (* cursor 22)) (- (display-width) 19) 20
-			   240) ;(gfx-map-rgb 240 100 50)
-
-    (do ((i 0 (1+ i))
-	 (list (room-exits *current-room*) (cdr list)))
-	((null list))
-      (paint-string
-       *default-font*
-       (format nil "~A ~A ~A" (first (car list))
-	       (second (car list)) (third (car list)))
-       12
-       (+ 10 (* i 22)) 255 255 255))
-    (paint-string *default-font*
-		  "Hit N to create a new exit, D to delete an exit."
-		  12 170 240 200 200)
-    (paint-string *default-font*
-		  "Hit 1, 2, or 3 to edit parts of an exit."
-		  12 190 240 200 200)
-    (refresh-display)
-
-    (let ((event (get-key-event)))
-      ;; mode events; please excuse the silly hardcoded SDL keysyms.
-      (cond ((= event (char-code #\q))
-	     ;; ensure room-exits and *room-set* are in sync.
-	     (aif (assoc :exits (cdr (room-archetype *current-room*)))
-		  (setf (cdr it) (room-exits *current-room*))
-		  (push (append (list :exits) (room-exits *current-room*))
-			(cdr (room-archetype *current-room*))))
-	     (return))
-	    ((= event 273) (when (plusp cursor) (decf cursor)))
-	    ((= event 274) (if (< cursor (1- max-row))
-			       (incf cursor)
-			       (setf cursor 0)))
-	    ((= event (char-code #\1))
-	     (setf (car (first (nth cursor (room-exits *current-room*))))
-		   (editor-number-prompt *default-font* "X: ")
-		   (cdr (first (nth cursor (room-exits *current-room*))))
-		   (editor-number-prompt *default-font* "Z: ")))
-	    ((= event (char-code #\3))
-	     (setf (car (third (nth cursor (room-exits *current-room*))))
-		   (editor-number-prompt *default-font* "X: ")
-		   (cdr (third (nth cursor (room-exits *current-room*))))
-		   (editor-number-prompt *default-font* "Z: ")))
-	    ((= event (char-code #\2))
-	     (setf (second (nth cursor (room-exits *current-room*)))
-		   (change-rooms-dialog
-		    (second (nth cursor (room-exits *current-room*))))))
-	    ((= event (char-code #\d))
-	     (unless (<= max-row 0)
-	       (setf (room-exits *current-room*)
-		     (delete (nth cursor (room-exits *current-room*))
-			     (room-exits *current-room*)))
-	       (decf max-row)))
-	    ((= event (char-code #\n))
-	     (push (list (cons 0 0) (caar *room-set*) (cons 0 0))
-		   (room-exits *current-room*))
-	     (incf max-row))))))
-
 (defun change-rooms-dialog (cur-room)
   (do ((cursor
 	(do ((i 0 (1+ i))
@@ -460,14 +398,14 @@ must already have been created with FETUS:CREATE-DISPLAY."
 			       (incf cursor)
 			       (setf cursor 0)))
 	    ((= event (char-code #\n))
-	     (let* ((name (intern (editor-string-prompt *default-font*
-							"Symbol name: "
-							:symbol-mode t)
+	     (let* ((name (intern (prompt-for-string *default-font*
+						     "Symbol name: "
+						     :symbol-mode t)
 				  :keyword))
-		    (real-name (editor-string-prompt *default-font*
-						     "Real name: "))
-		    (width (editor-number-prompt *default-font* "width: "))
-		    (depth (editor-number-prompt *default-font* "depth: ")))
+		    (real-name (prompt-for-string *default-font*
+						  "Real name: "))
+		    (width (prompt-for-integer *default-font* "width: "))
+		    (depth (prompt-for-integer *default-font* "depth: ")))
 	       (push `(,(prin1 name)
 		       (:name . ,real-name)
 		       (:floor . ,(make-array (list width depth)
