@@ -19,7 +19,7 @@ forever as friction becomes delegated to surfaces.")
 (defparameter *terminal-velocity* 16
   "Terminal velocity (currently, in any direction).")
 
-(defun update-physics (a)
+(defun update-physics (a room)
   "Update simple kinematics, friction, collision response on the given
 actor."
   (dolist (axis '(:x :y :z))
@@ -28,7 +28,7 @@ actor."
     (incf (iso-point-component axis (position-of a))
 	  (iso-point-component axis (velocity-of a))))
 
-  (detect-collisions a)
+  (detect-collisions a room)
 
   (let ((friction (if (contact-surface-of a) *ground-friction* *air-friction*)))
     (sinkf (iso-point-x (velocity-of a)) friction)
@@ -36,7 +36,7 @@ actor."
   (incf (iso-point-y (velocity-of a)) *gravity*))
 
 
-(defun detect-collisions (alice)
+(defun detect-collisions (alice room)
   (when (and (contact-surface-of alice)
 	     (not (penetrating-p alice (contact-surface-of alice))))
     (setf (contact-surface-of alice) nil))
@@ -47,7 +47,7 @@ actor."
   (maphash (lambda (unused bob) (declare (ignore unused)) (actor<->actor-collision alice bob))
 	   *room-block-actors*)
 
-  (room-collision-detection alice))
+  (room-collision-detection alice room))
 
 
 (defun actor<->actor-collision (alice bob)
@@ -60,7 +60,7 @@ actor."
 		  alice bob)
 
       (collision-response alice lsa impulse)
-		   
+
       ;; make bob the floor.
       (when (and (eql lsa :y)
 		 (> (iso-point-y (position-of alice))
@@ -71,7 +71,7 @@ actor."
 	(funcall (cadr (assoc :contact (cdr it)))
 		 bob alice lsa impulse)))
     t))
-	
+
 (defun collision-response (alice lsa impulse)
   "Affects collision response on ALICE."
   (incf (iso-point-component lsa (velocity-of alice))
@@ -80,7 +80,7 @@ actor."
     (decf (iso-point-component axis (position-of alice))
 	  (iso-point-component axis impulse))))
 
-(defun room-collision-detection (alice)
+(defun room-collision-detection (alice room)
   (let ((w (ceiling (iso-point-x (box-dimensions (box-of alice)))
 		    +tile-size+))
 	(d (ceiling (iso-point-z (box-dimensions (box-of alice)))
@@ -91,32 +91,18 @@ actor."
       (do* ((base-x (floor (iso-point-x (position-of alice)) +tile-size+))
 	    (x base-x (1+ x)))
 	   ((> x (+ base-x w)))
-	(try-border-collision alice x z)))))
+	(try-border-collision room alice x z)))))
 
-;;; XXX this is gross.	
-(defun check-exit (x z)
-  (when (minusp x) (setf x 0))
-  (when (minusp z) (setf z 0))
-  (when (>= x (1- (room-width))) (setf x (1- (room-width))))
-  (when (>= z (1- (room-depth))) (setf z (1- (room-depth))))
-
-  (dolist (exit (room-exits *current-room*))
-    (let ((this-side (first exit)))
-      (when (and (consp this-side)
-		 (= x (car this-side))
-		 (= z (cdr this-side)))
-	(when (zerop *exit-counter*)
-	  (setf *magic-exit-hack* (list (second exit) (third exit))))))))
-
-
-(defun try-border-collision (alice x z)
+(defun try-border-collision (room alice x z)
   (when (or (minusp x) (minusp z)
-	    (>= x (room-width))
-	    (>= z (room-depth))
-	    (= (aref (room-floor *current-room*) z x) 0))
+	    (>= x (width-of room))
+	    (>= z (depth-of room))
+	    (= (aref (floor-of room) z x) 0))
     (let ((wall-obj (make-wall-object x z)))
-      (when (actor<->actor-collision alice wall-obj)
-	  (check-exit x z))))
+      ;; XXX fixme
+      ;;(when (actor<->actor-collision alice wall-obj)
+      ;;  (check-exit x z))))
+      (actor<->actor-collision alice wall-obj)))
 
   (when (<= (iso-point-y (position-of alice)) *room-lowest-point*)
     (let ((floor-obj (make-floor-object x z)))

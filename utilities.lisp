@@ -11,7 +11,7 @@
 
 (defun update-camera (actor)
   (multiple-value-bind (x y)
-      (iso-project-point (actor-position actor))
+      (iso-project-point (position-of actor))
     (decf x (equinox:half (fetus:display-width)))
     (decf y (equinox:half (fetus:display-height)))
     (setf (car *camera*) (- x)

@@ -90,25 +90,11 @@ values from *ACTOR-ARCHETYPES*."
     actor))
 
 
-(defun update-all-actors (foo)
-  "Update collisions, physics, and handlers for all actors registered
-with the actor manager."
-  (declare (ignore foo))
-  (maphash (lambda (id actor)
-	     (update-physics actor)
 
-	     ;; ensure no penetrations.
-	     (maphash (lambda (id-b actor-b)
-			(unless (= id id-b)
-			  (assert (not (penetrating-p actor actor-b)))))
-		      *actor-map*)
-
-	     ;; XXX update contact handlers
-	     ;; XXX camera
-	     (update-sprite-coords (sprite-of actor)
-				   (position-of actor)
-				   actor)
-	     (funcall (handler-of actor) id actor))
+(defun ensure-no-penetrations (id actor)
+  (maphash (lambda (id-b actor-b)
+	     (unless (= id id-b)
+	       (assert (not (penetrating-p actor actor-b)))))
 	   *actor-map*))
 
 

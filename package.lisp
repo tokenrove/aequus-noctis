@@ -16,7 +16,6 @@
 	   #:initialize-actor-data
 	   #:create-actor-manager
 	   #:spawn-actor-from-archetype
-	   #:update-all-actors
 	   #:isometric-sprite-cmp
 	   #:check-room-change
 	   ;; generic actor handlers
@@ -35,6 +34,8 @@
 	   #:initialize-tiles
 	   #:initialize-room-data
 	   #:load-room
-	   #:room-redraw
+	   #:redraw
+	   #:room
+	   #:update-actors
 	   ;; room-editor
 	   #:room-editor))
