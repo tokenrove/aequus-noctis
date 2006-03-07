@@ -34,10 +34,8 @@ reduce it to within those bounds, inclusive."
 	   (,gmax ,max)
 	   (,gplace ,place))
       (when (> ,gmin ,gmax) (psetf ,gmin ,gmax ,gmax ,gmin))
-      (if (> ,gplace ,gmax)
-	  (setf ,gplace ,gmax)
-	  (if (< ,gplace ,gmin)
-	      (setf ,gplace ,gmin))))))
+      (cond ((> ,gplace ,gmax) (setf ,place ,gmax))
+	    ((< ,gplace ,gmin) (setf ,place ,gmin))))))
 
 ;; Note that we could add compiler macros here to do things like
 ;; precompute constant values, and use ash instead of / when the type

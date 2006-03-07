@@ -51,6 +51,8 @@ actor."
 
 
 (defun actor<->actor-collision (alice bob)
+  (declare (optimize speed)
+	   (type actor alice bob))
   "Returns T if the actors collided, NIL otherwise."
   (when (and (not (eql alice bob)) (penetrating-p alice bob))
     (multiple-value-bind (impulse lsa) (resolve-collision alice bob)
@@ -93,16 +95,15 @@ actor."
 	   ((> x (+ base-x w)))
 	(try-border-collision room alice x z)))))
 
+;; XXX fixme do floor and ceiling collisions, too.
 (defun try-border-collision (room alice x z)
   (when (or (minusp x) (minusp z)
 	    (>= x (width-of room))
 	    (>= z (depth-of room))
 	    (= (aref (floor-of room) z x) 0))
     (let ((wall-obj (make-wall-object x z)))
-      ;; XXX fixme
-      ;;(when (actor<->actor-collision alice wall-obj)
-      ;;  (check-exit x z))))
-      (actor<->actor-collision alice wall-obj)))
+      (when (actor<->actor-collision alice wall-obj)
+        (border-collision room alice x z))))
 
   (when (<= (iso-point-y (position-of alice)) *room-lowest-point*)
     (let ((floor-obj (make-floor-object x z)))

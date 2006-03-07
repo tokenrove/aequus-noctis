@@ -91,7 +91,9 @@ must already have been created with FETUS:CREATE-DISPLAY."
   (setf *default-font* (fetus:load-font "other-data/pph.ttf" 18))
   (initialize-tiles)
   (setf *sprite-manager* (fetus:create-sprite-manager #'isometric-sprite-cmp))
-  (setf *current-room* (load-room room-to-edit *sprite-manager* :spawn-actors-p nil))
+  ;; XXX
+;;  (setf *current-room* (load-room room-to-edit *sprite-manager* :spawn-actors-p nil))
+  (setf *current-room* (load-room-int room-to-edit *sprite-manager* :spawn-actors-p nil))
 
   (do ((entry-mode :blocks)
        (slice-cursor (make-iso-point))
@@ -158,7 +160,7 @@ must already have been created with FETUS:CREATE-DISPLAY."
 			(format nil "Read map data from ~A?" output-file)))
 	       (initialize-room-data output-file)
 	       (setf *current-room*
-		     (load-room room-to-edit *sprite-manager* :spawn-actors-p nil))
+		     (load-room-int room-to-edit *sprite-manager* :spawn-actors-p nil))
 	       (setf unsaved-changes-p t)
 	       (editor-osd-display-message "Room data freshly read from ~A."
 					   output-file)))

@@ -5,9 +5,6 @@
 (in-package :aequus-noctis)
 
 (defvar *camera* (cons 100 140))
-(defvar *magic-exit-hack* nil)
-(defvar *exit-counter* 0)
-
 
 (defun update-camera (actor)
   (multiple-value-bind (x y)

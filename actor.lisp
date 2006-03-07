@@ -15,13 +15,13 @@
 ;; XXX add documentation for these slots.
 (defclass actor ()
   ((type :reader actor-type :initarg :type :initform (error "Actors need types."))
-   (sprite :accessor sprite-of)
-   (position :accessor position-of)
-   (velocity :accessor velocity-of)
-   (box :accessor box-of)
-   (handler :accessor handler-of)
-   (contact-surface :accessor contact-surface-of)
-   (facing :accessor facing-of))
+   (sprite :accessor sprite-of :initarg :sprite)
+   (position :accessor position-of :initarg :position)
+   (velocity :accessor velocity-of :initform (make-iso-point))
+   (box :accessor box-of :initarg :box)
+   (handler :accessor handler-of :initarg :handler)
+   (contact-surface :accessor contact-surface-of :initform nil)
+   (facing :accessor facing-of :initform :east))
   (:documentation "An ACTOR is an object that exists at the game-logic
 level persistently.  Actors have handlers that are called at each time
 slice in the game, handlers that are called in response to collisions,
@@ -35,8 +35,10 @@ game world.")
 currently in use by any live actors.")
 
 (defun initialize-actor-data (&optional (archetypes-file "archetypes.sexp"))
-  (with-open-file (stream archetypes-file)
-    (setf *actor-archetypes* (read stream))))
+  (let ((*package* (find-package :equinox))
+	(*read-eval* nil))
+    (with-open-file (stream archetypes-file)
+      (setf *actor-archetypes* (read stream)))))
 
 (defun create-actor-manager ()
   "function CREATE-ACTOR-MANAGER
@@ -70,25 +72,35 @@ many parameters of an actor.")
 
 Creates (and returns) a new ACTOR instance, reading default member
 values from *ACTOR-ARCHETYPES*."
-  (let ((actor (make-instance 'actor :type name))
-	(archetype (cdr (find name *actor-archetypes* :key #'car))))
-    (when (null archetype)
-      (error "archetype ~A not found" name))
-    (setf (position-of actor) position
-	  (handler-of actor) (funcall (cadr (assoc :handler archetype)))
-	  (contact-surface-of actor) nil
-	  (facing-of actor) :east
-	  (sprite-of actor) (fetus:new-sprite-from-alist
-				(cdr (assoc :sprite archetype))))
-    (fetus:add-sprite-to-manager sprite-manager (sprite-of actor))
-    (destructuring-bind ((x y z) (w h d)) (cdr (assoc :box archetype))
-      (setf (box-of actor)
-	    (make-box :position (make-iso-point :x x :y y :z z)
-		    :dimensions (make-iso-point :x w :y h :z d))))
-    (setf (velocity-of actor) (make-iso-point))
+  (let* ((archetype (or (cdr (find name *actor-archetypes* :key #'car))
+			(error "archetype ~A not found" name)))
+	 (box (destructuring-bind ((x y z) (w h d))
+		  (cdr (assoc :box archetype))
+		(make-box :position (make-iso-point :x x :y y :z z)
+			  :dimensions (make-iso-point :x w :y h :z d))))
+	 (actor (make-instance 'actor :type name
+			       :position position
+			       :handler (funcall (cadr (assoc :handler archetype)))
+			       :sprite (fetus:new-sprite-from-alist
+					(cdr (assoc :sprite archetype)))
+			       :box box)))
     (manage-actor actor)
+    (fetus:add-sprite-to-manager sprite-manager (sprite-of actor))
     actor))
 
+(defun initialize-actor-from-archetype (actor position sprite-manager archetype)
+  (let* ((box (destructuring-bind ((x y z) (w h d))
+		  (cdr (assoc :box archetype))
+		(make-box :position (make-iso-point :x x :y y :z z)
+			  :dimensions (make-iso-point :x w :y h :z d)))))
+    (setf (position-of actor) position
+	  (handler-of actor) (funcall (cadr (assoc :handler archetype)))
+	  (sprite-of actor) (fetus:new-sprite-from-alist
+			     (cdr (assoc :sprite archetype)))
+	  (box-of actor) box)
+    (manage-actor actor)
+    (fetus:add-sprite-to-manager sprite-manager (sprite-of actor))
+    actor))
 
 
 (defun ensure-no-penetrations (id actor)
@@ -142,6 +154,7 @@ values from *ACTOR-ARCHETYPES*."
       (when (contact-surface-of actor)
 	(setf direction :up))
       (if (eql direction :up)
+	  ;; XXX if there's something standing on me, push up to compensate.
 	  (if (< (iso-point-y (position-of actor)) 42)
 	      (setf (iso-point-y (velocity-of actor)) 0.7)
 	      (setf direction :down))
@@ -184,10 +197,20 @@ events."
 				      (:south :stand-south)))))
     (when (and (fetus:event-pressedp +ev-button-a+)
 	       (contact-surface-of player))
-      (apply-impulse player :y 6))))
+      (apply-impulse player :y 6))
+    ;; when the action button is triggered,
+    ;;   if we're holding something that can be dropped, drop it
+    ;;   if we're standing on something that can be grabbed, grab it
+    ;;   if we're wielding a weapon, use it.
+    ))
 
 (defun create-monster-handler ()
   "Create an actor handler which roves around in a sinister manner."
+  ;; XXX unimplemented.
+  (lambda (id actor) (declare (ignore id actor))))
+
+
+(defun create-key-handler ()
   ;; XXX unimplemented.
   (lambda (id actor) (declare (ignore id actor))))
 

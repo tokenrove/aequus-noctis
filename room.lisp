@@ -178,6 +178,8 @@ Prerenders floor, adds fixed blocks to SPRITE-MANAGER, and optionally
   (array-dimension (floor-of room) 0))
 
 
+(defmethod border-collision ((room room) actor x z))
+
 (defmethod redraw ((room room))
   (fill-background 65)			; XXX genericize
   (blit-image *floor-buffer*
@@ -193,7 +195,7 @@ Prerenders floor, adds fixed blocks to SPRITE-MANAGER, and optionally
 	   *room-block-actors*))
 
 
-(defmethod update-actors ((room room))
+(defun update-actors (room)
   "Update collisions, physics, and handlers for all actors registered
 with the actor manager."
   (maphash (lambda (id actor)
@@ -209,6 +211,8 @@ with the actor manager."
 
 ;;;; FLOORS
 
+#+equinox:wallhack(defvar *wall-image* (load-image "art/mansion/walls/greytile.pcx"))
+
 (defun paint-floor (room)
   "function PAINT-FLOOR
 
@@ -217,12 +221,11 @@ paints from back to front."
 
   ;; Draw order is from bottom-right of the array (furthest away from
   ;; the camera).
-  (let* ((floor (floor-of room))
-	 (h-extent (array-dimension floor 1))
-	 (v-extent (array-dimension floor 0))
+  (let* ((h-extent (width-of room))
+	 (v-extent (depth-of room))
 	 (h-offs 0) (v-offs 0) (h-max 0) (v-max 0))
 
-    (setf h-max (+ (* h-extent 32) (* v-extent 32)))
+    (setf h-max (+ (* h-extent 64) (* v-extent 32))) ;; XXX constants
     (setf v-max (+ (* h-extent 20) (* v-extent 20)))
     (incf h-max 64)
     (incf v-max 64)
@@ -237,32 +240,80 @@ paints from back to front."
     (setf *floor-buffer* (new-image-buffer h-max v-max))
     (fill-background 0 *floor-buffer*)
 
-    (paint-floor-internal floor *floor-buffer* 
+    #+equinox:wallhack(paint-walls-internal (floor-of room)
+			  *floor-buffer* 
+			  h-extent h-offs
+			  v-extent v-offs)
+    (paint-floor-internal (floor-of room)
+			  *floor-buffer* 
 			  h-extent h-offs
 			  v-extent v-offs)))
 
 (defun paint-floor-internal (floor buffer h-extent h-offs v-extent v-offs)
-  (do ((z (1- v-extent) (1- z))
-       (pt (make-iso-point)))
-      ((< z 0))
-    (do ((x (1- h-extent) (1- x)))
-	((< x 0))
-      (let ((tile (aref floor z x)))
-	(when (plusp tile)
-	  (setf (iso-point-x pt) (* +tile-size+ x)
-		(iso-point-y pt) -16
-		(iso-point-z pt) (* +tile-size+ z))
-	  (multiple-value-bind (u v) (iso-project-point pt)
-	    (let* ((sprite (cdr (assoc :sprite (cdr (archetype-of
-						     (aref *tiles* tile))))))
-		   (blit-offset (cadr (assoc :blit-offset sprite))))
-	      (decf u (car blit-offset))
-	      (decf v (cdr blit-offset))
-	      (incf u h-offs)
-	      (incf v v-offs)
-	      (blit-image (image-of (aref *tiles* tile)) u v
-			  :destination buffer))))))))
+  (loop for z from (1- v-extent) downto 0
+	with pt = (make-iso-point)
+	do (loop for x from (1- h-extent) downto 0
+		 for tile = (let ((idx (aref floor z x)))
+			      (when (plusp idx) (aref *tiles* idx)))
+		 when tile
+		 do (setf (iso-point-x pt) (* +tile-size+ x)
+			  (iso-point-y pt) -16
+			  (iso-point-z pt) (* +tile-size+ z))
+		 (multiple-value-bind (u v)
+		     (iso-project-point pt)
+		   (let* ((sprite (sprite-of (archetype-of tile)))
+			  (blit-offset (cadr (assoc :blit-offset sprite))))
+		     (decf u (car blit-offset))
+		     (decf v (cdr blit-offset))
+		     (incf u h-offs)
+		     (incf v v-offs)
+		     (blit-image (image-of tile) u v
+				 :destination buffer)))
+		 ;;else if (and (> x 0) (> z 0)) do
+		 #+equinox:wallhack(setf (iso-point-x pt) (* +tile-size+ x)
+		       (iso-point-y pt) -16
+		       (iso-point-z pt) (* +tile-size+ z))
+		 #+equinox:wallhack(multiple-value-bind (u v)
+		     (iso-project-point pt)
+		   (decf u 32)
+		   ;;(decf v (cdr blit-offset))
+		   (incf u h-offs)
+		   (incf v v-offs)
+		   (blit-image *wall-image* u v :src-rect '(0 0 64 144) :destination buffer)))))
 
+#+equinox:wallhack(defun paint-walls-internal (floor buffer h-extent h-offs v-extent v-offs)
+  (loop for z from (1- v-extent) downto 0
+	with pt = (make-iso-point)
+	with x = (1- h-extent)
+	do
+	(setf (iso-point-x pt) (* +tile-size+ x)
+	      (iso-point-y pt) -16
+	      (iso-point-z pt) (* +tile-size+ z))
+	(multiple-value-bind (u v)
+	    (iso-project-point pt)
+	  (decf u 32)
+	  ;;(decf v (cdr blit-offset))
+	  (incf u h-offs)
+	  (incf v v-offs)
+	  (blit-image *wall-image* u v :src-rect '(0 0 64 144) :destination buffer)))
+  (loop for x from (1- h-extent) downto 0
+	with pt = (make-iso-point)
+	with z = (1- v-extent)
+	do
+	(setf (iso-point-x pt) (* +tile-size+ x)
+	      (iso-point-y pt) -16
+	      (iso-point-z pt) (* +tile-size+ z))
+	(multiple-value-bind (u v)
+	    (iso-project-point pt)
+	  (decf u 32)
+	  ;;(decf v (cdr blit-offset))
+	  (incf u h-offs)
+	  (incf v v-offs)
+	  (blit-image *wall-image* u v :src-rect '(0 0 64 144) :destination buffer))))
+
+
+(defmethod sprite-of ((archetype list))
+  (cdr (assoc :sprite (cdr archetype))))
 
 (defun position-hash-key (x z)
   (complex x z))
@@ -272,15 +323,14 @@ paints from back to front."
 (defun make-wall-object (x z)
   (let ((objects *wall-objects*))
     (unless (gethash (position-hash-key x z) objects)
-      (let ((wall (make-instance 'actor :type :wall)))
-	(setf (position-of wall) #I((* x +tile-size+) 0
-				    (* z +tile-size+))
-	      (box-of wall)
-	      (make-box :position #I(0 0 0)
-			:dimensions #I(+tile-size+
-				       *room-highest-point*
-				       +tile-size+))
-	      (gethash (position-hash-key x z) objects) wall)))
+      (let ((wall (make-instance 'actor :type :wall
+				 :position #I((* x +tile-size+) 0
+					      (* z +tile-size+))
+				 :box (make-box :position #I(0 0 0)
+						:dimensions #I(+tile-size+
+							       *room-highest-point*
+							       +tile-size+)))))
+	(setf (gethash (position-hash-key x z) objects) wall)))
     (gethash (position-hash-key x z) objects)))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)

@@ -10,9 +10,8 @@
 	   #:iso-project-point
 	   ;; XXX shouldn't be here
 	   #:update-camera
-	   #:*magic-exit-hack*
-	   #:*exit-counter*
 	   ;; actor
+	   #:actor
 	   #:initialize-actor-data
 	   #:create-actor-manager
 	   #:spawn-actor-from-archetype
@@ -23,6 +22,7 @@
 	   #:create-human-input-handler
 	   #:create-floating-block-handler
 	   #:create-monster-handler
+	   #:create-key-handler
 	   #:pushable-block-handler
 	   #:player-contact-handler
 	   #:loot-contact-handler
@@ -39,5 +39,6 @@
 	   #:update-actors
 	   #:width-of
 	   #:depth-of
+	   #:border-collision
 	   ;; room-editor
 	   #:room-editor))
