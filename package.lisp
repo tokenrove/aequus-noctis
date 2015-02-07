@@ -41,4 +41,5 @@
 	   #:depth-of
 	   #:border-collision
 	   ;; room-editor
-	   #:room-editor))
+           #:room-editor
+           #:wallhack))
