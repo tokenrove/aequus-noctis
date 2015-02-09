@@ -1,10 +1,14 @@
 ;; -*- Lisp -*-
 
-(defpackage #:aequus-noctis-system (:use #:cl #:asdf))
-(in-package #:aequus-noctis-system)
+(in-package :asdf-user)
 
 (defsystem aequus-noctis
-  :depends-on (:game-fetus-alpha :anaphora)
+  :description "Game engine for primitive 2D isometric games"
+  :author "Julian Squires <julian@cipht.net>"
+  :license "GPL-3"
+  :depends-on (:game-fetus-alpha :anaphora :fiveam)
+  :perform (test-op (o s)
+                    (uiop:symbol-call :fiveam :run! (uiop:find-symbol* :unit :aequus-noctis)))
   :components
   ((:file "package")
    (:file "math" :depends-on ("package"))

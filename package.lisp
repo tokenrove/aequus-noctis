@@ -1,7 +1,7 @@
 
 (defpackage :aequus-noctis
   (:nicknames :equinox)
-  (:use :cl :anaphora :game-fetus-alpha)
+  (:use :cl :anaphora)
   (:shadow #:room)
   (:export #:sinkf
 	   #:clampf
@@ -43,3 +43,8 @@
 	   ;; room-editor
            #:room-editor
            #:wallhack))
+
+(in-package :aequus-noctis)
+(5am:def-suite unit :description "Fast-running tests")
+(5am:def-suite integration :description "Big or slow non-interactive tests")
+(5am:in-suite unit)

@@ -171,3 +171,18 @@ camera positioning."
 	     (zb (iso-point-z (box-position b))))
 	 (extents-overlap-p za (+ za (iso-point-z (box-dimensions a)))
 			    zb (+ zb (iso-point-z (box-dimensions b)))))))
+
+#+5am
+(5am:test boxes-overlap-p-is-reflexive
+  (let ((a (make-box :position #I(0 0 0) :dimensions #I(10 10 10))))
+    (5am:is-true (boxes-overlap-p a a))))
+
+#+5am
+(5am:test boxes-overlap-p-is-symmetric
+  (let ((a (make-box :position #I(0 0 0) :dimensions #I(10 10 10)))
+        (b (make-box :position #I(10 0 0) :dimensions #I(10 10 10)))
+        (c (make-box :position #I(5 5 5) :dimensions #I(10 10 10))))
+    (5am:is-true (boxes-overlap-p a c))
+    (5am:is-true (boxes-overlap-p c a))
+    (5am:is-false (boxes-overlap-p a b))
+    (5am:is-false (boxes-overlap-p b a))))
