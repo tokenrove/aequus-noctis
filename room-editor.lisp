@@ -100,16 +100,15 @@ must already have been created with FETUS:CREATE-DISPLAY."
                                               *floor-tile-height*
                                               +tile-size+)))
          (cur-tile 1)
-         (cur-spawn :apple)
          (dirty-floor-p nil)
          (unsaved-changes-p nil)
          (output-file "rooms-edit-test.sexp"))
         (nil)
-      (let ((event (get-key-event)))
+      (let ((event (fetus:get-key-event)))
         ;; mode events; please excuse the silly hardcoded SDL keysyms.
         (cond ((= event (char-code #\q))
                (when (or (not unsaved-changes-p)
-                         (prompt-for-yes-or-no
+                         (fetus:prompt-for-yes-or-no
                           *default-font*
                           "Unsaved changes - really quit? (Y/N)"))
                  (return)))
@@ -135,8 +134,8 @@ must already have been created with FETUS:CREATE-DISPLAY."
                                          (format nil "~A" (car x)))))))
 
               ((= event (char-code #\w))
-               (when (prompt-for-yes-or-no *default-font*
-                                           "Really write changes? (Y/N)")
+               (when (fetus:prompt-for-yes-or-no *default-font*
+                                                 "Really write changes? (Y/N)")
                  (with-open-file (stream output-file
                                          :direction :output
                                          :if-exists :supersede)
@@ -147,12 +146,12 @@ must already have been created with FETUS:CREATE-DISPLAY."
                  (setf unsaved-changes-p nil)
                  (editor-osd-display-message "Written to ~A." output-file)))
 
-	    ;;; XXX part of DOTF extension
-              ((= event (char-code #\e))
-               (edit-exits-dialog))
+;;; XXX part of DOTF extension
+              #+demon-of-the-fall((= event (char-code #\e))
+                                  (edit-exits-dialog))
 
               ((= event (char-code #\r))
-               (when (prompt-for-yes-or-no
+               (when (fetus:prompt-for-yes-or-no
                       *default-font*
                       (if unsaved-changes-p
                           "Really re-read data? (you have unsaved changes!)"
@@ -166,7 +165,7 @@ must already have been created with FETUS:CREATE-DISPLAY."
 
               ((or (= event (char-code #\h))
                    (= event (char-code #\/)) ; #\? without shift.
-                   (= event 282))		; F1
+                   (= event 282))            ; F1
                (room-editor-help))
 
               ((= event (char-code #\c))
@@ -174,8 +173,8 @@ must already have been created with FETUS:CREATE-DISPLAY."
                  (fetus:destroy-sprite-manager *sprite-manager*)
                  (setf *sprite-manager* (fetus:create-sprite-manager
                                          #'isometric-sprite-cmp))
-                 (setf *current-room*
-                       (load-room dest-room *sprite-manager* :spawn-actors-p nil))
+                 #+demon-of-the-fall(setf *current-room*
+                                          (load-room dest-room *sprite-manager* :spawn-actors-p nil))
                  (setf slice-cursor (make-iso-point))
                  (editor-osd-display-message "Change to room ~A."
                                              dest-room)))
@@ -187,7 +186,7 @@ must already have been created with FETUS:CREATE-DISPLAY."
                      (setf (iso-point-y slice-cursor) *floor-slice-y*)
                      (decf (iso-point-y slice-cursor)
                            *slice-height-increment*))))
-              ((= event (char-code #\=))	; #\+ without shift.
+              ((= event (char-code #\=)) ; #\+ without shift.
                (unless (> (iso-point-y slice-cursor) *room-highest-point*)
                  (if (at-floor-level-p slice-cursor)
                      (setf (iso-point-y slice-cursor) 0)
@@ -229,8 +228,8 @@ must already have been created with FETUS:CREATE-DISPLAY."
                    (format t "~&despawn!")))))
 
       (multiple-value-bind (x y) (iso-project-point slice-cursor)
-	(decf x (half (display-width)))
-	(decf y (half (display-height)))
+        (decf x (half (fetus:display-width)))
+        (decf y (half (fetus:display-height)))
 	(setf (car *camera*) (- x)
 	      (cdr *camera*) (- y)))
 
@@ -269,20 +268,20 @@ must already have been created with FETUS:CREATE-DISPLAY."
 
       (aif *editor-osd-message*
 	   (progn
-	     (draw-status-message *default-font* (cdr it)
-				  100 100 140)
+             (fetus:draw-status-message *default-font* (cdr it)
+                                        100 100 140)
 	     (decf (car it))
 	     (when (zerop (car it))
 	       (setf *editor-osd-message* nil)))
-	   (draw-status-message *default-font*
-				(format nil "X,Z: ~A,~A  Y: ~A  Room: ~A"
-					(floor (iso-point-x slice-cursor)
-					       +tile-size+)
-					(floor (iso-point-z slice-cursor)
-					       +tile-size+)
-					(iso-point-y slice-cursor)
-					(room-name *current-room*))
-				40 40 80))
+           (fetus:draw-status-message *default-font*
+                                      (format nil "X,Z: ~A,~A  Y: ~A  Room: ~A"
+                                              (floor (iso-point-x slice-cursor)
+                                                     +tile-size+)
+                                              (floor (iso-point-z slice-cursor)
+                                                     +tile-size+)
+                                              (iso-point-y slice-cursor)
+                                              (room-name *current-room*))
+                                      40 40 80))
       (fetus:present-display)))
   (fetus:destroy-sprite-manager *sprite-manager*))
 
@@ -297,7 +296,7 @@ must already have been created with FETUS:CREATE-DISPLAY."
       (dotimes (x max-column)
 	(when (< (+ x (* y max-column)) (length set))
 	  (awhen (funcall image-fn (elt set (+ x (* y max-column))))
-		 (fetus:blit-image it (+ 10 (* 104 x)) (+ 55 (* 70 y))))
+            (fetus:blit-image it (+ 10 (* 104 x)) (+ 55 (* 70 y))))
 	  (fetus:paint-string *default-font*
 			      (funcall name-fn
 				       (elt set
@@ -345,11 +344,11 @@ must already have been created with FETUS:CREATE-DISPLAY."
 	 (list help-text (cdr list)))
 	((null list))
       (awhen (car list)
-	     (paint-string
-	      *default-font*
-	      (if (consp it) (cadr it) it)
-	      (if (consp it) (car it) 10)
-	      (+ 4 (* i 19)) 255 255 255)))
+        (fetus:paint-string
+         *default-font*
+         (if (consp it) (cadr it) it)
+         (if (consp it) (car it) 10)
+         (+ 4 (* i 19)) 255 255 255)))
     (fetus:present-display)
 
     (let ((event (fetus:get-key-event)))
@@ -368,27 +367,27 @@ must already have been created with FETUS:CREATE-DISPLAY."
 	    ((or (null list) (eql cur-room (caar list))) i)))
        (max-row (length *room-set*)))
       (nil)
-    (draw-filled-rectangle 8 8 (- (display-width) 16) (- (display-height) 32)
-			   128)	;(gfx-map-rgb 128 128 128)
-    (draw-rectangle 8 8 (- (display-width) 16) (- (display-height) 32)
-		    32) ;(gfx-map-rgb 32 32 32)
-    (draw-filled-rectangle 11 (+ 10 (* cursor 22)) (- (display-width) 19) 20
-			   240)		;(gfx-map-rgb 240 100 50)
+    (fetus:draw-filled-rectangle 8 8 (- (fetus:display-width) 16) (- (fetus:display-height) 32)
+                                 128)	;(gfx-map-rgb 128 128 128)
+    (fetus:draw-rectangle 8 8 (- (fetus:display-width) 16) (- (fetus:display-height) 32)
+                          32)           ;(gfx-map-rgb 32 32 32)
+    (fetus:draw-filled-rectangle 11 (+ 10 (* cursor 22)) (- (fetus:display-width) 19) 20
+                                 240)   ;(gfx-map-rgb 240 100 50)
 
     (do ((i 0 (1+ i))
 	 (list *room-set* (cdr list)))
 	((null list))
-      (paint-string
+      (fetus:paint-string
        *default-font*
        (format nil "~A: ~A" (caar list) (cdr (assoc :name (cdar list))))
        12
        (+ 10 (* i 22)) 255 255 255))
-    (paint-string *default-font*
-		  "Select a room with [enter]"
-		  12 170 240 200 200)
-    (paint-string *default-font*
-		  "Hit N to create a new room."
-		  12 190 240 200 200)
+    (fetus:paint-string *default-font*
+                        "Select a room with [enter]"
+                        12 170 240 200 200)
+    (fetus:paint-string *default-font*
+                        "Hit N to create a new room."
+                        12 190 240 200 200)
     (fetus:present-display)
 
     (let ((event (fetus:get-key-event)))
@@ -399,14 +398,14 @@ must already have been created with FETUS:CREATE-DISPLAY."
 			       (incf cursor)
 			       (setf cursor 0)))
 	    ((= event (char-code #\n))
-	     (let* ((name (intern (prompt-for-string *default-font*
-						     "Symbol name: "
-						     :symbol-mode t)
+             (let* ((name (intern (fetus:prompt-for-string *default-font*
+                                                           "Symbol name: "
+                                                           :symbol-mode t)
 				  :keyword))
-		    (real-name (prompt-for-string *default-font*
-						  "Real name: "))
-		    (width (prompt-for-integer *default-font* "width: "))
-		    (depth (prompt-for-integer *default-font* "depth: ")))
+                    (real-name (fetus:prompt-for-string *default-font*
+                                                        "Real name: "))
+                    (width (fetus:prompt-for-integer *default-font* "width: "))
+                    (depth (fetus:prompt-for-integer *default-font* "depth: ")))
 	       (push `(,(prin1 name)
 		       (:name . ,real-name)
 		       (:floor . ,(make-array (list width depth)

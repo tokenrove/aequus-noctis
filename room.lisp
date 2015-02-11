@@ -55,7 +55,7 @@ Prerenders floor, adds fixed blocks to SPRITE-MANAGER, and optionally
 					  sprite-manager)
 	      (room-actors room))))
     ;; XXX deal with physics constants here.
-    (use-image-palette (image-of (aref *tiles* 1)))
+    (fetus:use-image-palette (image-of (aref *tiles* 1)))
 
     (paint-floor room)
     (setf *room-block-actors* (make-hash-table :test 'equal))
@@ -73,10 +73,10 @@ Prerenders floor, adds fixed blocks to SPRITE-MANAGER, and optionally
 (defmethod border-collision ((room room) actor x z))
 
 (defmethod redraw ((room room))
-  (fill-background 65)			; XXX genericize
-  (blit-image *floor-buffer*
-	      (- (car *camera*) (half (surface-w *floor-buffer*)))
-	      (+ (cdr *camera*) (half (surface-h *floor-buffer*))))
+  (fetus:fill-background 65)            ; XXX genericize
+  (fetus:blit-image *floor-buffer*
+                    (- (car *camera*) (half (fetus:surface-w *floor-buffer*)))
+                    (+ (cdr *camera*) (half (fetus:surface-h *floor-buffer*))))
   ;; update sprites
   (maphash (lambda (key actor)
 	     (declare (ignore key))
@@ -128,9 +128,9 @@ paints from back to front."
     (decf v-offs 8)
 
     (when *floor-buffer*
-      (free-image *floor-buffer*))
-    (setf *floor-buffer* (new-image-buffer h-max v-max))
-    (fill-background 0 *floor-buffer*)
+      (fetus:free-image *floor-buffer*))
+    (setf *floor-buffer* (fetus:new-image-buffer h-max v-max))
+    (fetus:fill-background 0 *floor-buffer*)
 
     #+equinox:wallhack(paint-walls-internal (floor-of room)
 			  *floor-buffer* 
@@ -159,8 +159,8 @@ paints from back to front."
 		     (decf v (cdr blit-offset))
 		     (incf u h-offs)
 		     (incf v v-offs)
-		     (blit-image (image-of tile) u v
-				 :destination buffer)))
+                     (fetus:blit-image (image-of tile) u v
+                                       :destination buffer)))
 		 ;;else if (and (> x 0) (> z 0)) do
 		 #+equinox:wallhack(setf (iso-point-x pt) (* +tile-size+ x)
 		       (iso-point-y pt) -16
