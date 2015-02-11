@@ -2,6 +2,10 @@
 (defpackage :aequus-noctis
   (:nicknames :equinox)
   (:use :cl :anaphora)
+  ;; Protocol
+  (:export #:paint
+           #:update
+           #:notify)
   (:shadow #:room)
   (:export #:sinkf
 	   #:clampf
@@ -36,8 +40,7 @@
 	   #:load-room-int
 	   #:redraw
 	   #:room
-	   #:update-actors
-	   #:width-of
+           #:width-of
 	   #:depth-of
 	   #:border-collision
 	   ;; room-editor

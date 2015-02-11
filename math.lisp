@@ -186,6 +186,7 @@ camera positioning."
                    :dimensions (make-iso-point :x 10 :y 10 :z 10)))
       (c (make-box :position (make-iso-point :x 5 :y 5 :z 5)
                    :dimensions (make-iso-point :x 10 :y 10 :z 10))))
+    (declare (ignorable a b c))
     (&body)))
 
 #+5am

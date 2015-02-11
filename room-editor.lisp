@@ -99,6 +99,7 @@ must already have been created with FETUS:CREATE-DISPLAY."
          (cursor-box (make-box :dimensions #I(+tile-size+
                                               *floor-tile-height*
                                               +tile-size+)))
+         (cur-spawn :apple)
          (cur-tile 1)
          (dirty-floor-p nil)
          (unsaved-changes-p nil)

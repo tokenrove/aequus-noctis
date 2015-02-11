@@ -87,9 +87,12 @@ Prerenders floor, adds fixed blocks to SPRITE-MANAGER, and optionally
 	   *room-block-actors*))
 
 
-(defun update-actors (room)
+(defmethod update ((room room) where time-elapsed)
   "Update collisions, physics, and handlers for all actors registered
 with the actor manager."
+  ;; WHERE in the context of rooms is the PLAY-SESSION, but we don't
+  ;; care about that here.
+  (declare (ignore where))
   (maphash (lambda (id actor)
 	     (update-physics actor room)
 	     (ensure-no-penetrations id actor)
@@ -97,8 +100,8 @@ with the actor manager."
 	     ;; XXX camera
 	     (update-sprite-coords (sprite-of actor)
 				   (position-of actor)
-				   actor)
-	     (funcall (handler-of actor) id actor))
+                                   actor)
+             (update actor room time-elapsed))
 	   *actor-map*))
 
 ;;;; FLOORS

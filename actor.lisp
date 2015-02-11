@@ -19,7 +19,6 @@
    (position :accessor position-of :initarg :position)
    (velocity :accessor velocity-of :initform (make-iso-point))
    (box :accessor box-of :initarg :box)
-   (handler :accessor handler-of :initarg :handler)
    (contact-surface :accessor contact-surface-of :initform nil)
    (facing :accessor facing-of :initform :east))
   (:documentation "An ACTOR is an object that exists at the game-logic
@@ -80,8 +79,7 @@ values from *ACTOR-ARCHETYPES*."
 			  :dimensions (make-iso-point :x w :y h :z d))))
 	 (actor (make-instance 'actor :type name
 			       :position position
-			       :handler (funcall (cadr (assoc :handler archetype)))
-			       :sprite (fetus:new-sprite-from-alist
+                               :sprite (fetus:new-sprite-from-alist
 					(cdr (assoc :sprite archetype)))
 			       :box box)))
     (manage-actor actor)
@@ -94,8 +92,7 @@ values from *ACTOR-ARCHETYPES*."
 		(make-box :position (make-iso-point :x x :y y :z z)
 			  :dimensions (make-iso-point :x w :y h :z d)))))
     (setf (position-of actor) position
-	  (handler-of actor) (funcall (cadr (assoc :handler archetype)))
-	  (sprite-of actor) (fetus:new-sprite-from-alist
+          (sprite-of actor) (fetus:new-sprite-from-alist
 			     (cdr (assoc :sprite archetype)))
 	  (box-of actor) box)
     (manage-actor actor)
@@ -140,146 +137,6 @@ values from *ACTOR-ARCHETYPES*."
 	(>= #1# #2#))))
 
 
-;;;; Handlers
-
-(defun create-do-nothing-handler ()
-  "Create an actor handler which does nothing."
-  (lambda (id actor) (declare (ignore id actor))))
-
-(defun create-floating-block-handler ()
-  "Create an actor handler which floats up and down."
-  (let ((direction :up))
-    (lambda (id actor)
-      (declare (ignore id))
-      (when (contact-surface-of actor)
-	(setf direction :up))
-      (if (eql direction :up)
-	  ;; XXX if there's something standing on me, push up to compensate.
-	  (if (< (iso-point-y (position-of actor)) 42)
-	      (setf (iso-point-y (velocity-of actor)) 0.7)
-	      (setf direction :down))
-	  (if (> (iso-point-y (position-of actor)) 0)
-	      (setf (iso-point-y (velocity-of actor)) -0.2)
-	      (setf direction :up))))))
-
-(defun create-human-input-handler ()
-  "Create a handler which updates an actor based on current input
-events."
-  (lambda (id player)
-    (declare (ignore id))
-    (let ((pressed-p nil))
-      (when (fetus:event-pressedp :up)
-	(setf (facing-of player) :north)
-	(apply-impulse player :x 0.5)
-	(setf pressed-p t)
-	(fetus:set-sprite-animation (sprite-of player) :walk-north))
-      (when (fetus:event-pressedp :down)
-	(setf (facing-of player) :south)
-	(apply-impulse player :x -0.5)
-	(setf pressed-p t)
-	(fetus:set-sprite-animation (sprite-of player) :walk-south))
-      (when (fetus:event-pressedp :left)
-	(setf (facing-of player) :west)
-	(apply-impulse player :z 0.5)
-	(setf pressed-p t)
-	(fetus:set-sprite-animation (sprite-of player) :walk-west))
-      (when (fetus:event-pressedp :right)
-	(setf (facing-of player) :east)
-	(apply-impulse player :z -0.5)
-	(setf pressed-p t)
-	(fetus:set-sprite-animation (sprite-of player) :walk-east))
-      (unless pressed-p
-	(fetus:set-sprite-animation (sprite-of player)
-				    (case (facing-of player)
-				      (:east :stand-east)
-				      (:west :stand-west)
-				      (:north :stand-north)
-				      (:south :stand-south)))))
-    (when (and (fetus:event-pressedp :button-a)
-	       (contact-surface-of player))
-      (apply-impulse player :y 6))
-    ;; when the action button is triggered,
-    ;;   if we're holding something that can be dropped, drop it
-    ;;   if we're standing on something that can be grabbed, grab it
-    ;;   if we're wielding a weapon, use it.
-    ))
-
-(defun create-monster-handler ()
-  "Create an actor handler which roves around in a sinister manner."
-  ;; XXX unimplemented.
-  (lambda (id actor) (declare (ignore id actor))))
-
-
-(defun create-key-handler ()
-  ;; XXX unimplemented.
-  (lambda (id actor) (declare (ignore id actor))))
-
-
-(defun pushable-block-handler (us them face impulse)
-  (declare (ignore them))
-  (decf (iso-point-component face (velocity-of us))
-	(iso-point-component face impulse)))
-
-(defun player-contact-handler (us them face impulse)
-  (declare (ignore them))
-  (decf (iso-point-component face (velocity-of us))
-	(iso-point-component face impulse)))
-
-(defun monster-contact-handler (us them face impulse)
-  (declare (ignore us them face impulse))
-;;    if something is on top of us,
-;;        sink its horizontal velocities by our friction,
-;;        add our velocity to its velocity.
-;;    if we're touching the player at all,
-;;        kill them.
-  )
-
-(defun loot-contact-handler (us them face impulse)
-  (declare (ignore us them face impulse))
-  ;; if we're touching the player, they can have us.
-  )
-
 (defmethod print-object ((actor actor) stream)
   (print-unreadable-object (actor stream :type t :identity t)
     (format stream "TYPE(~A) POSITION(~A)" (actor-type actor) (position-of actor))))
-
-#+5am
-(5am:test actor-handler-is-called
-  (let ((room (make-instance 'room))
-        (*actor-map* (make-hash-table))
-        (*tile-archetypes* '(("null entry")
-                             ("bare floor"
-                              (:image "t/floor.pcx")
-                              (:sprite
-                               (:image "t/floor.pcx")
-                               (:blit-offset (32 . 0))
-                               (:frames ((0 0 64 40)))
-                               (:animations ((:default (0 . 60)))))
-                              (:box (0 0 0) (64 16 64)))))
-        was-called-p
-        actor)
-    (fetus/os:with-directory-of-system (:aequus-noctis)
-      (fetus/test:with-dummy-sdl
-        (fetus:with-display ()
-          (setf actor (make-instance 'actor
-                                     :type :test
-                                     :position #I(0 0 0)
-                                     :sprite (fetus:new-sprite-from-alist '((:image "t/block.pcx")
-                                                                            (:blit-offset (0 . 0))
-                                                                            (:frames ((0 0 32 96)))
-                                                                            (:animations ((:default (0 . 60))))))
-                                     :box (make-box :position #I(0 0 0) :dimensions #I(10 10 10))
-                                     :handler (lambda (id actor-from-room)
-                                                (declare (ignore id))
-                                                (5am:is (equal actor actor-from-room))
-                                                (setf was-called-p t))))
-          (initialize-tiles)
-          (fetus:with-sprite-manager (s-m #'isometric-sprite-cmp)
-            (let ((*room-set*
-                    '((:TEST (:NAME . "Test")
-                       (:FLOOR . #2A((1)))
-                       (:BLOCKS) (:ACTORS) (:EXITS) (:PLAYER-SPAWN)))))
-              (load-room-int room :test s-m))
-            (manage-actor actor)
-            (update-actors room)))))
-    (5am:is-true was-called-p)))
