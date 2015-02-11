@@ -19,21 +19,22 @@ forever as friction becomes delegated to surfaces.")
 (defparameter *terminal-velocity* 16
   "Terminal velocity (currently, in any direction).")
 
-(defun update-physics (a room)
+(defun update-physics (body room time-elapsed)
   "Update simple kinematics, friction, collision response on the given
 actor."
+  (declare (ignore time-elapsed))
   (dolist (axis '(:x :y :z))
-    (clampf (iso-point-component axis (velocity-of a))
+    (clampf (iso-point-component axis (velocity-of body))
 	    *terminal-velocity*)
-    (incf (iso-point-component axis (position-of a))
-	  (iso-point-component axis (velocity-of a))))
+    (incf (iso-point-component axis (position-of body))
+          (iso-point-component axis (velocity-of body))))
 
-  (detect-collisions a room)
+  (detect-collisions body room)
 
-  (let ((friction (if (contact-surface-of a) *ground-friction* *air-friction*)))
-    (sinkf (iso-point-x (velocity-of a)) friction)
-    (sinkf (iso-point-z (velocity-of a)) friction))
-  (incf (iso-point-y (velocity-of a)) *gravity*))
+  (let ((friction (if (contact-surface-of body) *ground-friction* *air-friction*)))
+    (sinkf (iso-point-x (velocity-of body)) friction)
+    (sinkf (iso-point-z (velocity-of body)) friction))
+  (incf (iso-point-y (velocity-of body)) *gravity*))
 
 
 (defun detect-collisions (alice room)

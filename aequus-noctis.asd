@@ -19,4 +19,5 @@
    (:file "room" :depends-on ("actor" "tile" "protocol"))
    (:file "physics" :depends-on ("actor" "room" "math"))
    (:file "room-editor" :depends-on ("room" "utilities"))
-   (:file "actor-tests" :depends-on ("actor" "room"))))
+   (:file "actor-tests" :depends-on ("actor" "room"))
+   (:file "physics-tests" :depends-on ("actor-tests" "physics"))))

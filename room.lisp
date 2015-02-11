@@ -94,7 +94,7 @@ with the actor manager."
   ;; care about that here.
   (declare (ignore where))
   (maphash (lambda (id actor)
-	     (update-physics actor room)
+             (update-physics actor room time-elapsed)
 	     (ensure-no-penetrations id actor)
 	     ;; XXX update contact handlers
 	     ;; XXX camera
