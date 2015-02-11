@@ -1,0 +1,5 @@
+*~
+
+# CCL sure likes to emit fasls
+*.fasl
+*.lx64fsl
