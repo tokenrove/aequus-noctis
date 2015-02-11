@@ -238,3 +238,48 @@ events."
   (declare (ignore us them face impulse))
   ;; if we're touching the player, they can have us.
   )
+
+(defmethod print-object ((actor actor) stream)
+  (print-unreadable-object (actor stream :type t :identity t)
+    (format stream "TYPE(~A) POSITION(~A)" (actor-type actor) (position-of actor))))
+
+#+5am
+(5am:test actor-handler-is-called
+  (let ((room (make-instance 'room))
+        (*actor-map* (make-hash-table))
+        (*tile-archetypes* '(("null entry")
+                             ("bare floor"
+                              (:image "t/floor.pcx")
+                              (:sprite
+                               (:image "t/floor.pcx")
+                               (:blit-offset (32 . 0))
+                               (:frames ((0 0 64 40)))
+                               (:animations ((:default (0 . 60)))))
+                              (:box (0 0 0) (64 16 64)))))
+        was-called-p
+        actor)
+    (fetus/os:with-directory-of-system (:aequus-noctis)
+      (fetus/test:with-dummy-sdl
+        (fetus:with-display ()
+          (setf actor (make-instance 'actor
+                                     :type :test
+                                     :position #I(0 0 0)
+                                     :sprite (fetus:new-sprite-from-alist '((:image "t/block.pcx")
+                                                                            (:blit-offset (0 . 0))
+                                                                            (:frames ((0 0 32 96)))
+                                                                            (:animations ((:default (0 . 60))))))
+                                     :box (make-box :position #I(0 0 0) :dimensions #I(10 10 10))
+                                     :handler (lambda (id actor-from-room)
+                                                (declare (ignore id))
+                                                (5am:is (equal actor actor-from-room))
+                                                (setf was-called-p t))))
+          (initialize-tiles)
+          (fetus:with-sprite-manager (s-m #'isometric-sprite-cmp)
+            (let ((*room-set*
+                    '((:TEST (:NAME . "Test")
+                       (:FLOOR . #2A((1)))
+                       (:BLOCKS) (:ACTORS) (:EXITS) (:PLAYER-SPAWN)))))
+              (load-room-int room :test s-m))
+            (manage-actor actor)
+            (update-actors room)))))
+    (5am:is-true was-called-p)))
