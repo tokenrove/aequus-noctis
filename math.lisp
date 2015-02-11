@@ -24,6 +24,12 @@
 		 (and (minusp ,gplace) (minusp ,gval))) (decf ,place ,gval))
 	    (t (incf ,place ,gval))))))
 
+#+5am (5am:test sinkf-given-small-value-reduces-to-zero
+        (let ((x 0.5))
+          (5am:is (not (zerop x)))
+          (5am:is (zerop (sinkf x 1.0)))
+          (5am:is (zerop x))))
+
 (defmacro clampf (place max &optional (min `(- ,max)))
   "If PLACE exceeds MAX or MIN (MIN = -MAX if unspecified),
 reduce it to within those bounds, inclusive."
@@ -173,15 +179,23 @@ camera positioning."
 			    zb (+ zb (iso-point-z (box-dimensions b)))))))
 
 #+5am
+(5am:def-fixture boxes ()
+  (let ((a (make-box :position (make-iso-point :x 0 :y 0 :z 0)
+                   :dimensions (make-iso-point :x 10 :y 10 :z 10)))
+      (b (make-box :position (make-iso-point :x 10 :y 0 :z 0)
+                   :dimensions (make-iso-point :x 10 :y 10 :z 10)))
+      (c (make-box :position (make-iso-point :x 5 :y 5 :z 5)
+                   :dimensions (make-iso-point :x 10 :y 10 :z 10))))
+    (&body)))
+
+#+5am
 (5am:test boxes-overlap-p-is-reflexive
-  (let ((a (make-box :position #I(0 0 0) :dimensions #I(10 10 10))))
+  (5am:with-fixture boxes ()
     (5am:is-true (boxes-overlap-p a a))))
 
 #+5am
 (5am:test boxes-overlap-p-is-symmetric
-  (let ((a (make-box :position #I(0 0 0) :dimensions #I(10 10 10)))
-        (b (make-box :position #I(10 0 0) :dimensions #I(10 10 10)))
-        (c (make-box :position #I(5 5 5) :dimensions #I(10 10 10))))
+  (5am:with-fixture boxes ()
     (5am:is-true (boxes-overlap-p a c))
     (5am:is-true (boxes-overlap-p c a))
     (5am:is-false (boxes-overlap-p a b))
