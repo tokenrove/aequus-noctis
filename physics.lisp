@@ -42,16 +42,16 @@ actor."
 	     (not (penetrating-p alice (contact-surface-of alice))))
     (setf (contact-surface-of alice) nil))
 
-  (maphash (lambda (unused bob) (declare (ignore unused)) (actor<->actor-collision alice bob))
+  (maphash (lambda (unused bob) (declare (ignore unused)) (actor<->actor-collision alice bob room))
 	   *actor-map*)
 
-  (maphash (lambda (unused bob) (declare (ignore unused)) (actor<->actor-collision alice bob))
+  (maphash (lambda (unused bob) (declare (ignore unused)) (actor<->actor-collision alice bob room))
 	   *room-block-actors*)
 
   (room-collision-detection alice room))
 
 
-(defun actor<->actor-collision (alice bob)
+(defun actor<->actor-collision (alice bob room)
   (declare (optimize speed)
 	   (type actor alice bob))
   "Returns T if the actors collided, NIL otherwise."
@@ -70,9 +70,8 @@ actor."
 		    (iso-point-y (position-of bob))))
 	(setf (contact-surface-of alice) bob))
 
-      (awhen (find (actor-type bob) *actor-archetypes* :key #'car)
-	(funcall (cadr (assoc :contact (cdr it)))
-		 bob alice lsa impulse)))
+      (notify bob room :contact :with alice :axis lsa :impulse impulse)
+      (notify alice room :contact :with alice :axis lsa :impulse impulse))
     t))
 
 (defun collision-response (alice lsa impulse)
@@ -103,18 +102,18 @@ actor."
 	    (>= z (depth-of room))
 	    (= (aref (floor-of room) z x) 0))
     (let ((wall-obj (make-wall-object x z)))
-      (when (actor<->actor-collision alice wall-obj)
-        (border-collision room alice x z))))
+      (when (actor<->actor-collision alice wall-obj room)
+        (notify alice room :border-collision :at (make-iso-point :x x :z z)))))
 
   (when (<= (iso-point-y (position-of alice)) *room-lowest-point*)
     (let ((floor-obj (make-floor-object x z)))
-      (actor<->actor-collision alice floor-obj)))
+      (actor<->actor-collision alice floor-obj room)))
 
   (when (>= (+ (iso-point-y (position-of alice))
 	       (iso-point-y (box-dimensions (box-of alice))))
 	    *room-highest-point*)
     (let ((ceiling-obj (make-ceiling-object x z)))
-      (actor<->actor-collision alice ceiling-obj))))
+      (actor<->actor-collision alice ceiling-obj room))))
 
 
 (defun sign-of (v)

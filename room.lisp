@@ -70,8 +70,6 @@ Prerenders floor, adds fixed blocks to SPRITE-MANAGER, and optionally
   (array-dimension (floor-of room) 0))
 
 
-(defmethod border-collision ((room room) actor x z))
-
 (defmethod redraw ((room room))
   (fetus:fill-background 65)            ; XXX genericize
   (fetus:blit-image *floor-buffer*

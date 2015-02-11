@@ -26,6 +26,12 @@ level persistently.  Actors have handlers that are called at each time
 slice in the game, handlers that are called in response to collisions,
 and physical properties."))
 
+;;; Fall-back handlers
+(defmethod update ((who actor) where time-elapsed)
+  (declare (ignore who where time-elapsed)))
+(defmethod notify ((who actor) where what &key &allow-other-keys)
+  (declare (ignore who where what)))
+
 (defvar *actor-map* (make-hash-table)
   "Global hash of ID => ACTOR containing each actor ``alive'' in the
 game world.")
