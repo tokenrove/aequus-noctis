@@ -15,7 +15,6 @@
 #+5am
 (5am:test actor-collision-handler-is-called
   (let* ((room (make-instance 'room))
-         (*actor-map* (make-hash-table))
          (*tile-archetypes* '(("null entry")
                               ("bare floor"
                                (:image "t/floor.pcx")
@@ -53,8 +52,8 @@
                         (:FLOOR . #2A((1)))
                         (:BLOCKS) (:ACTORS) (:EXITS) (:PLAYER-SPAWN)))))
               (load-room-int room :test s-m))
-            (manage-actor lower-actor)
-            (manage-actor upper-actor)
+            (add-actor-to-room room lower-actor)
+            (add-actor-to-room room upper-actor)
             (update room nil 1)
             (update room nil 1)
             (update room nil 1)))))

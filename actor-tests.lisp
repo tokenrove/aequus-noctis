@@ -12,7 +12,6 @@
 #+5am
 (5am:test actor-handler-is-called
   (let ((room (make-instance 'room))
-        (*actor-map* (make-hash-table))
         (*tile-archetypes* '(("null entry")
                              ("bare floor"
                               (:image "t/floor.pcx")
@@ -41,6 +40,6 @@
                        (:FLOOR . #2A((1)))
                        (:BLOCKS) (:ACTORS) (:EXITS) (:PLAYER-SPAWN)))))
               (load-room-int room :test s-m))
-            (manage-actor actor)
+            (add-actor-to-room room actor)
             (update room nil 0.2)))))
     (5am:is-true (slot-value actor 'handler-called-p))))

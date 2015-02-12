@@ -23,16 +23,23 @@
   (with-open-file (stream rooms-file)
     (setf *room-set* (read stream))))
 
+(defparameter *max-blocks-per-room* 256)
+(defparameter *max-actors-per-room* 64)
+
 ;;; XXX the idea of player-spawn, exits, and name are going to be moved to
 ;;; the scenario logic.
 (defclass room ()
   ((floor :accessor floor-of)
-   (blocks :accessor blocks-of)
-   (actors :accessor room-actors)
+   (blocks :accessor blocks-of
+           :initform (make-array *max-blocks-per-room* :adjustable nil :fill-pointer 0 :element-type 'actor))
+   (actors :accessor actors-of
+           :initform (make-array *max-actors-per-room* :adjustable nil :fill-pointer 0 :element-type 'actor))
    (archetype :accessor archetype-of)
    (name :accessor room-name))
   (:documentation "ROOM encapsulates the concept of a location; a
 floor, fixed blocks (set), and actors."))
+
+;; define make-room from plan
 
 (defun load-room-int (room name sprite-manager &key (spawn-actors-p t))
   "Loads the named room from *ROOM-SET*, into *CURRENT-ROOM*.
@@ -44,24 +51,41 @@ Prerenders floor, adds fixed blocks to SPRITE-MANAGER, and optionally
   (let ((archetype (assoc name *room-set*)))
     (assert archetype () "Couldn't find room ~A." name)
     (setf (floor-of room) (cdr (assoc :floor (cdr archetype)))
-	  (blocks-of room) (cdr (assoc :blocks (cdr archetype)))
-	  (room-name room) (cdr (assoc :name (cdr archetype)))
-	  (archetype-of room) archetype
-	  (room-actors room) nil)
+          (room-name room) (cdr (assoc :name (cdr archetype)))
+          (archetype-of room) archetype)
     (when spawn-actors-p
       (dolist (actor (cdr (assoc :actors (cdr archetype))))
-	(push (spawn-actor-from-archetype (first actor)
-					  (iso-point-from-list (second actor))
-					  sprite-manager)
-	      (room-actors room))))
+        (add-actor-to-room room
+                           (spawn-actor-from-archetype (first actor)
+                                                       (iso-point-from-list (second actor))
+                                                       sprite-manager))))
     ;; XXX deal with physics constants here.
     (fetus:use-image-palette (image-of (aref *tiles* 1)))
 
     (paint-floor room)
-    (setf *room-block-actors* (make-hash-table :test 'equal))
-    (dolist (block (blocks-of room))
-      (give-block-sprite block sprite-manager))
+
+    (dolist (block (cdr (assoc :blocks (cdr archetype))))
+      (give-block-sprite room block sprite-manager))
     room))
+
+(defun add-actor-to-room (room actor)
+  (vector-push actor (actors-of room)))
+
+;;; Be warned here and in REMOVE-BLOCK-FROM-ROOM; it is not specified
+;;; that DELETE returns the same array with its fill-pointer intact,
+;;; so we might have to do something more clever here.  As it is, I am
+;;; going to wait until I actually have that happen with an
+;;; implementation we use before I do that more-clever-thing, though.
+;;; (And I might instead submit a patch to the implementation that
+;;; preserves the fill-pointer)
+(defun remove-actor-from-room (room actor)
+  (delete actor (actors-of room)))
+
+(defun add-block-to-room (room block)
+  (vector-push block (blocks-of room)))
+
+(defun remove-block-from-room (room block)
+  (delete block (blocks-of room)))
 
 (defun width-of (room)
   (array-dimension (floor-of room) 1))
@@ -75,14 +99,12 @@ Prerenders floor, adds fixed blocks to SPRITE-MANAGER, and optionally
   (fetus:blit-image *floor-buffer*
                     (- (car *camera*) (half (fetus:surface-w *floor-buffer*)))
                     (+ (cdr *camera*) (half (fetus:surface-h *floor-buffer*))))
-  ;; update sprites
-  (maphash (lambda (key actor)
-	     (declare (ignore key))
-	     (update-sprite-coords
-	      (sprite-of actor)
-	      (position-of actor)
-	      actor))
-	   *room-block-actors*))
+  (loop for block across (blocks-of room)
+        do (progn
+             (update-sprite-coords
+              (sprite-of block)
+              (position-of block)
+              block))))
 
 
 (defmethod update ((room room) where time-elapsed)
@@ -91,16 +113,22 @@ with the actor manager."
   ;; WHERE in the context of rooms is the PLAY-SESSION, but we don't
   ;; care about that here.
   (declare (ignore where))
-  (maphash (lambda (id actor)
+  (loop for actor across (actors-of room)
+        do (progn
              (update-physics actor room time-elapsed)
-	     (ensure-no-penetrations id actor)
-	     ;; XXX update contact handlers
-	     ;; XXX camera
-	     (update-sprite-coords (sprite-of actor)
-				   (position-of actor)
+             (ensure-no-penetrations actor room)
+             ;; XXX update contact handlers
+             ;; XXX camera
+             (update-sprite-coords (sprite-of actor)
+                                   (position-of actor)
                                    actor)
-             (update actor room time-elapsed))
-	   *actor-map*))
+             (update actor room time-elapsed))))
+
+(defun ensure-no-penetrations (alice room)
+  (loop for bob across (actors-of room)
+        unless (eq alice bob)
+        do (assert (not (penetrating-p alice bob)))))
+
 
 ;;;; FLOORS
 
@@ -262,10 +290,7 @@ paints from back to front."
 
 ;;;; BLOCKS
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (defvar *room-block-actors*))
-
-(defun give-block-sprite (block sprite-manager)
+(defun give-block-sprite (room block sprite-manager)
   (let* ((arch (cdr (archetype-of (aref *tiles* (first block)))))
 	 (actor (make-slice-object arch (second block)
 				   (third block) (fourth block)))
@@ -278,7 +303,7 @@ paints from back to front."
      actor)
     (setf (sprite-of actor) sprite)
     (fetus:add-sprite-to-manager sprite-manager sprite)
-    (setf (gethash (cdr block) *room-block-actors*) actor)))
+    (add-block-to-room room actor)))
 
 (defun make-slice-object (archetype x y z)
   (let ((block (make-instance 'actor :type :block)))

@@ -42,11 +42,10 @@ actor."
 	     (not (penetrating-p alice (contact-surface-of alice))))
     (setf (contact-surface-of alice) nil))
 
-  (maphash (lambda (unused bob) (declare (ignore unused)) (actor<->actor-collision alice bob room))
-	   *actor-map*)
-
-  (maphash (lambda (unused bob) (declare (ignore unused)) (actor<->actor-collision alice bob room))
-	   *room-block-actors*)
+  (loop for bob across (actors-of room)
+        do (actor<->actor-collision alice bob room))
+  (loop for bob across (blocks-of room)
+        do (actor<->actor-collision alice bob room))
 
   (room-collision-detection alice room))
 

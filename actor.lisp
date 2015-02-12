@@ -32,40 +32,11 @@ and physical properties."))
 (defmethod notify ((who actor) where what &key &allow-other-keys)
   (declare (ignore who where what)))
 
-(defvar *actor-map* (make-hash-table)
-  "Global hash of ID => ACTOR containing each actor ``alive'' in the
-game world.")
-(defvar *actor-id-counter* 0
-  "Actor unique ID counter, should always contain an ID which is not
-currently in use by any live actors.")
-
 (defun initialize-actor-data (&optional (archetypes-file "archetypes.sexp"))
   (let ((*package* (find-package :equinox))
 	(*read-eval* nil))
     (with-open-file (stream archetypes-file)
       (setf *actor-archetypes* (read stream)))))
-
-(defun create-actor-manager ()
-  "function CREATE-ACTOR-MANAGER
-
-Initialize the global actor manager.  Note that this doesn't check
-whether it has previously been initialized."
-  (setf *actor-map* (make-hash-table))
-  (setf *actor-id-counter* 0))
-
-(defun manage-actor (actor)
-  "function MANAGE-ACTOR actor => id
-
-Register actor with actor manager."
-  (setf (gethash *actor-id-counter* *actor-map*) actor)
-  (prog1 *actor-id-counter*
-    (incf *actor-id-counter*)))
-
-(defun unmanage-actor (id)
-  "function UNMANAGE-ACTOR id => boolean
-
-Remove the actor specified by id from the actor manager."
-  (remhash id *actor-map*))
 
 (defvar *actor-archetypes* nil
   "The actor archetypes table, which defines the default values for
@@ -106,13 +77,6 @@ values from *ACTOR-ARCHETYPES*."
     actor))
 
 
-(defun ensure-no-penetrations (id actor)
-  (maphash (lambda (id-b actor-b)
-	     (unless (= id id-b)
-	       (assert (not (penetrating-p actor actor-b)))))
-	   *actor-map*))
-
-
 ;;; XXX this function does not pay attention to box position.
 (defun update-sprite-coords (sprite position actor)
   "Update sprite screen coordinates from world coordinates."
@@ -144,5 +108,8 @@ values from *ACTOR-ARCHETYPES*."
 
 
 (defmethod print-object ((actor actor) stream)
-  (print-unreadable-object (actor stream :type t :identity t)
-    (format stream "TYPE(~A) POSITION(~A)" (actor-type actor) (position-of actor))))
+  (flet ((maybe-unbound (o s) (if (slot-boundp o s) (slot-value o s) :unbound)))
+    (print-unreadable-object (actor stream :type t :identity t)
+      (format stream "TYPE(~A) POSITION(~A)"
+              (maybe-unbound actor 'type)
+              (maybe-unbound actor 'position)))))

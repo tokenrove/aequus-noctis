@@ -36,18 +36,17 @@ position.  Returns T if the floor was modified, NIL otherwise."
 cursor position (if there's one there).  Returns T if the room was
 modified, NIL otherwise."
   (let* ((point-list (mapcar (lambda (x y) (floor x y))
-			     (iso-point-list cursor)
-			     (list +tile-size+ *slice-height-increment*
-				   +tile-size+)))
-	 (actor (gethash point-list *room-block-actors*))
-	 (archblocks (assoc :blocks (cdr (archetype-of *current-room*)))))
+                             (iso-point-list cursor)
+                             (list +tile-size+ *slice-height-increment*
+                                   +tile-size+)))
+         (actor (find-if (lambda (a) (equal (position-of a) (position-of cursor))) (blocks-of *current-room*)))
+         (archblocks (assoc :blocks (cdr (archetype-of *current-room*)))))
     (when actor
-      (remhash point-list *room-block-actors*)
+      (remove-block-from-room actor *current-room*)
       (fetus:remove-sprite-from-manager *sprite-manager* (sprite-of actor))
       (setf (cdr archblocks)
 	    (delete-if #'(lambda (x) (equal point-list (cdr x)))
 		       (cdr archblocks)))
-      (setf (blocks-of *current-room*) (cdr archblocks))
       t)))
 
 
@@ -60,8 +59,9 @@ remove it.  Returns T if the room was modified, NIL otherwise."
 				(iso-point-list cursor)
 				(list +tile-size+ *slice-height-increment*
 				      +tile-size+))))
-	 (actor (gethash (cdr block) *room-block-actors*))
-	 (archblocks (assoc :blocks (cdr (archetype-of *current-room*)))))
+         (actor (find-if (lambda (a) (equal (position-of a) (position-of cursor)))
+                         (blocks-of *current-room*)))
+         (archblocks (assoc :blocks (cdr (archetype-of *current-room*)))))
     ;; XXX really, should check if actor is same as our tile, return
     ;; NIL if so.
     (when actor (remove-block cursor))
@@ -70,9 +70,8 @@ remove it.  Returns T if the room was modified, NIL otherwise."
 	(progn
 	  (push (list :blocks block) (cdr (archetype-of *current-room*)))
 	  (setf archblocks (assoc :blocks
-				  (cdr (archetype-of *current-room*))))))
-    (setf (blocks-of *current-room*) (cdr archblocks))
-    (give-block-sprite block *sprite-manager*)
+                                  (cdr (archetype-of *current-room*))))))
+    (give-block-sprite *current-room* block *sprite-manager*)
     t))
 
 

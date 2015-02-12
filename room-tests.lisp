@@ -3,8 +3,7 @@
 #+5am
 (fetus/test:define-screencap-comparison-test (basic-room-rendering-test :suite unit :system :aequus-noctis)
   (fetus:with-sprite-manager (s-m #'isometric-sprite-cmp)
-    (let* ((*actor-map* (make-hash-table))
-           (*tile-archetypes* '(("null entry")
+    (let* ((*tile-archetypes* '(("null entry")
                                 ("bare floor"
                                  (:image "t/floor.pcx")
                                  (:sprite
