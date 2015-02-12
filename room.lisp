@@ -34,6 +34,8 @@
            :initform (make-array *max-blocks-per-room* :adjustable nil :fill-pointer 0 :element-type 'actor))
    (actors :accessor actors-of
            :initform (make-array *max-actors-per-room* :adjustable nil :fill-pointer 0 :element-type 'actor))
+   (sprites
+    :initform (make-array (+ *max-blocks-per-room* *max-actors-per-room*) :adjustable nil :fill-pointer 0 :element-type 'fetus:sprite))
    (archetype :accessor archetype-of)
    (name :accessor room-name))
   (:documentation "ROOM encapsulates the concept of a location; a
@@ -41,7 +43,7 @@ floor, fixed blocks (set), and actors."))
 
 ;; define make-room from plan
 
-(defun load-room-int (room name sprite-manager &key (spawn-actors-p t))
+(defun load-room-int (room name &key (spawn-actors-p t))
   "Loads the named room from *ROOM-SET*, into *CURRENT-ROOM*.
 Prerenders floor, adds fixed blocks to SPRITE-MANAGER, and optionally
  (based on SPAWN-ACTORS-P) spawns actors associated with room."
@@ -57,15 +59,14 @@ Prerenders floor, adds fixed blocks to SPRITE-MANAGER, and optionally
       (dolist (actor (cdr (assoc :actors (cdr archetype))))
         (add-actor-to-room room
                            (spawn-actor-from-archetype (first actor)
-                                                       (iso-point-from-list (second actor))
-                                                       sprite-manager))))
+                                                       (iso-point-from-list (second actor))))))
     ;; XXX deal with physics constants here.
     (fetus:use-image-palette (image-of (aref *tiles* 1)))
 
     (paint-floor room)
 
     (dolist (block (cdr (assoc :blocks (cdr archetype))))
-      (give-block-sprite room block sprite-manager))
+      (give-block-sprite room block))
     room))
 
 (defun add-actor-to-room (room actor)
@@ -99,12 +100,17 @@ Prerenders floor, adds fixed blocks to SPRITE-MANAGER, and optionally
   (fetus:blit-image *floor-buffer*
                     (- (car *camera*) (half (fetus:surface-w *floor-buffer*)))
                     (+ (cdr *camera*) (half (fetus:surface-h *floor-buffer*))))
-  (loop for block across (blocks-of room)
-        do (progn
-             (update-sprite-coords
-              (sprite-of block)
-              (position-of block)
-              block))))
+  (with-slots (sprites) room
+    (setf (fill-pointer sprites) 0)
+    (loop for block across (blocks-of room)
+          do (update-sprite-coords sprites block))
+    (loop for actor across (actors-of room)
+          do (update-sprite-coords sprites actor))
+    (setf sprites (stable-sort sprites
+                               #'isometric-sprite-cmp
+                               :key #'fetus:sprite-priority))
+    (loop for sprite across sprites
+          do (fetus:draw-sprite sprite))))
 
 
 (defmethod update ((room room) where time-elapsed)
@@ -118,10 +124,6 @@ with the actor manager."
              (update-physics actor room time-elapsed)
              (ensure-no-penetrations actor room)
              ;; XXX update contact handlers
-             ;; XXX camera
-             (update-sprite-coords (sprite-of actor)
-                                   (position-of actor)
-                                   actor)
              (update actor room time-elapsed))))
 
 (defun ensure-no-penetrations (alice room)
@@ -290,19 +292,12 @@ paints from back to front."
 
 ;;;; BLOCKS
 
-(defun give-block-sprite (room block sprite-manager)
+(defun give-block-sprite (room block)
   (let* ((arch (cdr (archetype-of (aref *tiles* (first block)))))
 	 (actor (make-slice-object arch (second block)
 				   (third block) (fourth block)))
 	 (sprite (fetus:new-sprite-from-alist (cdr (assoc :sprite arch)))))
-    (update-sprite-coords
-     sprite
-     (make-iso-point :x (* (second block) +tile-size+)
-		     :y (* (third block) *slice-height-increment*)
-		     :z (* (fourth block) +tile-size+))
-     actor)
     (setf (sprite-of actor) sprite)
-    (fetus:add-sprite-to-manager sprite-manager sprite)
     (add-block-to-room room actor)))
 
 (defun make-slice-object (archetype x y z)

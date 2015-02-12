@@ -9,7 +9,6 @@
 
 (in-package :aequus-noctis)
 
-(defvar *sprite-manager* nil)
 (defvar *default-font* nil)
 (defvar *current-room*)
 
@@ -43,7 +42,6 @@ modified, NIL otherwise."
          (archblocks (assoc :blocks (cdr (archetype-of *current-room*)))))
     (when actor
       (remove-block-from-room actor *current-room*)
-      (fetus:remove-sprite-from-manager *sprite-manager* (sprite-of actor))
       (setf (cdr archblocks)
 	    (delete-if #'(lambda (x) (equal point-list (cdr x)))
 		       (cdr archblocks)))
@@ -71,7 +69,7 @@ remove it.  Returns T if the room was modified, NIL otherwise."
 	  (push (list :blocks block) (cdr (archetype-of *current-room*)))
 	  (setf archblocks (assoc :blocks
                                   (cdr (archetype-of *current-room*))))))
-    (give-block-sprite *current-room* block *sprite-manager*)
+    (give-block-sprite *current-room* block)
     t))
 
 
@@ -88,10 +86,9 @@ ROOM-TO-EDIT, which is loaded from *ROOM-SET*.  Note that the display
 must already have been created with FETUS:CREATE-DISPLAY."
   (fetus:with-font (*default-font* "other-data/pph.ttf" 18)
     (initialize-tiles)
-    (setf *sprite-manager* (fetus:create-sprite-manager #'isometric-sprite-cmp))
     ;; XXX
-    ;;  (setf *current-room* (load-room room-to-edit *sprite-manager* :spawn-actors-p nil))
-    (setf *current-room* (load-room-int room-to-edit nil *sprite-manager* :spawn-actors-p nil))
+    ;;  (setf *current-room* (load-room room-to-edit :spawn-actors-p nil))
+    (setf *current-room* (load-room-int room-to-edit nil :spawn-actors-p nil))
 
     (do ((entry-mode :blocks)
          (slice-cursor (make-iso-point))
@@ -158,7 +155,7 @@ must already have been created with FETUS:CREATE-DISPLAY."
                           (format nil "Read map data from ~A?" output-file)))
                  (initialize-room-data output-file)
                  (setf *current-room*
-                       (load-room-int room-to-edit nil *sprite-manager* :spawn-actors-p nil))
+                       (load-room-int room-to-edit nil :spawn-actors-p nil))
                  (setf unsaved-changes-p t)
                  (editor-osd-display-message "Room data freshly read from ~A."
                                              output-file)))
@@ -170,11 +167,8 @@ must already have been created with FETUS:CREATE-DISPLAY."
 
               ((= event (char-code #\c))
                (let ((dest-room (change-rooms-dialog room-to-edit)))
-                 (fetus:destroy-sprite-manager *sprite-manager*)
-                 (setf *sprite-manager* (fetus:create-sprite-manager
-                                         #'isometric-sprite-cmp))
                  #+demon-of-the-fall(setf *current-room*
-                                          (load-room dest-room *sprite-manager* :spawn-actors-p nil))
+                                          (load-room dest-room :spawn-actors-p nil))
                  (setf slice-cursor (make-iso-point))
                  (editor-osd-display-message "Change to room ~A."
                                              dest-room)))
@@ -244,7 +238,6 @@ must already have been created with FETUS:CREATE-DISPLAY."
 	(paint-floor *current-room*)
 	(setf dirty-floor-p nil))
       (redraw *current-room*)
-      (fetus:update-all-sprites *sprite-manager*)
 
       (dolist (spawn (cdr (assoc :actors
 				 (cdr (archetype-of *current-room*)))))
@@ -282,8 +275,7 @@ must already have been created with FETUS:CREATE-DISPLAY."
                                               (iso-point-y slice-cursor)
                                               (room-name *current-room*))
                                       40 40 80))
-      (fetus:present-display)))
-  (fetus:destroy-sprite-manager *sprite-manager*))
+      (fetus:present-display))))
 
 (defun palette-mode (set image-fn name-fn)
   (do ((cursor (cons 0 0))

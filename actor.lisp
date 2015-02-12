@@ -43,8 +43,8 @@ and physical properties."))
 many parameters of an actor.")
 
 
-(defun spawn-actor-from-archetype (name position sprite-manager)
-  "function SPAWN-ACTOR-FROM-ARCHETYPE name position sprite-manager => actor
+(defun spawn-actor-from-archetype (room name position)
+  "function SPAWN-ACTOR-FROM-ARCHETYPE room name position => actor
 
 Creates (and returns) a new ACTOR instance, reading default member
 values from *ACTOR-ARCHETYPES*."
@@ -55,15 +55,14 @@ values from *ACTOR-ARCHETYPES*."
 		(make-box :position (make-iso-point :x x :y y :z z)
 			  :dimensions (make-iso-point :x w :y h :z d))))
 	 (actor (make-instance 'actor :type name
-			       :position position
-                               :sprite (fetus:new-sprite-from-alist
-					(cdr (assoc :sprite archetype)))
-			       :box box)))
-    (manage-actor actor)
-    (fetus:add-sprite-to-manager sprite-manager (sprite-of actor))
+                                      :position position
+                                      :sprite (fetus:new-sprite-from-alist
+                                               (cdr (assoc :sprite archetype)))
+                                      :box box)))
+    (add-actor-to-room room actor)
     actor))
 
-(defun initialize-actor-from-archetype (actor position sprite-manager archetype)
+(defun initialize-actor-from-archetype (actor position archetype)
   (let* ((box (destructuring-bind ((x y z) (w h d))
 		  (cdr (assoc :box archetype))
 		(make-box :position (make-iso-point :x x :y y :z z)
@@ -72,20 +71,20 @@ values from *ACTOR-ARCHETYPES*."
           (sprite-of actor) (fetus:new-sprite-from-alist
 			     (cdr (assoc :sprite archetype)))
 	  (box-of actor) box)
-    (manage-actor actor)
-    (fetus:add-sprite-to-manager sprite-manager (sprite-of actor))
     actor))
 
 
 ;;; XXX this function does not pay attention to box position.
-(defun update-sprite-coords (sprite position actor)
+(defun update-sprite-coords (sprites actor)
   "Update sprite screen coordinates from world coordinates."
-  (multiple-value-bind (u v) (iso-project-point position)
-    (incf u (car *camera*))
-    (incf v (cdr *camera*))
-    (setf (fetus:sprite-x sprite) (- u (car (fetus:sprite-blit-offset sprite)))
-	  (fetus:sprite-y sprite) (- v (cdr (fetus:sprite-blit-offset sprite))))
-    (setf (fetus:sprite-priority sprite) actor)))
+  (with-slots (sprite position) actor
+   (multiple-value-bind (u v) (iso-project-point position)
+     (incf u (car *camera*))
+     (incf v (cdr *camera*))
+     (setf (fetus:sprite-x sprite) (- u (car (fetus:sprite-blit-offset sprite)))
+           (fetus:sprite-y sprite) (- v (cdr (fetus:sprite-blit-offset sprite))))
+     (setf (fetus:sprite-priority sprite) actor)
+     (vector-push sprite sprites))))
 
 
 (defun isometric-sprite-cmp (a b)

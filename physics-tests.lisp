@@ -30,32 +30,31 @@
       (fetus/test:with-dummy-sdl
         (fetus:with-display ()
           (initialize-tiles)
-          (fetus:with-sprite-manager (s-m #'isometric-sprite-cmp)
-            (setf lower-actor (make-instance 'physics-test-actor
-                                             :type :test
-                                             :position #I(0 0 0)
-                                             :sprite (fetus:new-sprite-from-alist '((:image "t/block.pcx")
-                                                                                    (:blit-offset (0 . 0))
-                                                                                    (:frames ((0 0 32 96)))
-                                                                                    (:animations ((:default (0 . 60))))))
-                                             :box (make-box :position #I(0 0 0) :dimensions #I(10 10 10)))
-                  upper-actor (make-instance 'physics-test-actor
-                                             :type :test
-                                             :position #I(0 11 0)
-                                             :sprite (fetus:new-sprite-from-alist '((:image "t/block.pcx")
-                                                                                    (:blit-offset (0 . 0))
-                                                                                    (:frames ((0 0 32 96)))
-                                                                                    (:animations ((:default (0 . 60))))))
-                                             :box (make-box :position #I(0 0 0) :dimensions #I(10 10 10))))
-            (let ((*room-set*
-                    '((:TEST (:NAME . "Test")
-                        (:FLOOR . #2A((1)))
-                        (:BLOCKS) (:ACTORS) (:EXITS) (:PLAYER-SPAWN)))))
-              (load-room-int room :test s-m))
-            (add-actor-to-room room lower-actor)
-            (add-actor-to-room room upper-actor)
-            (update room nil 1)
-            (update room nil 1)
-            (update room nil 1)))))
+          (setf lower-actor (make-instance 'physics-test-actor
+                                           :type :test
+                                           :position #I(0 0 0)
+                                                 :sprite (fetus:new-sprite-from-alist '((:image "t/block.pcx")
+                                                                                        (:blit-offset (0 . 0))
+                                                                                        (:frames ((0 0 32 96)))
+                                                                                        (:animations ((:default (0 . 60))))))
+                                                 :box (make-box :position #I(0 0 0) :dimensions #I(10 10 10)))
+                upper-actor (make-instance 'physics-test-actor
+                                           :type :test
+                                           :position #I(0 11 0)
+                                                 :sprite (fetus:new-sprite-from-alist '((:image "t/block.pcx")
+                                                                                        (:blit-offset (0 . 0))
+                                                                                        (:frames ((0 0 32 96)))
+                                                                                        (:animations ((:default (0 . 60))))))
+                                                 :box (make-box :position #I(0 0 0) :dimensions #I(10 10 10))))
+          (let ((*room-set*
+                  '((:TEST (:NAME . "Test")
+                      (:FLOOR . #2A((1)))
+                      (:BLOCKS) (:ACTORS) (:EXITS) (:PLAYER-SPAWN)))))
+            (load-room-int room :test))
+          (add-actor-to-room room lower-actor)
+          (add-actor-to-room room upper-actor)
+          (update room nil 1)
+          (update room nil 1)
+          (update room nil 1))))
     (5am:is-true (slot-value lower-actor 'contact-handler-called-p))
     (5am:is-true (slot-value upper-actor 'contact-handler-called-p))))
