@@ -7,10 +7,11 @@
 ;;;
 ;;; Julian Squires <tek@wiw.org> / 2004
 
-(in-package :aequus-noctis)
+(in-package :aequus-noctis/editor)
 
 (defvar *default-font* nil)
 (defvar *current-room*)
+(defvar *camera* (make-camera))
 
 ;;;; EDITING COMPONENTS
 
@@ -88,7 +89,8 @@ must already have been created with FETUS:CREATE-DISPLAY."
     (initialize-tiles)
     ;; XXX
     ;;  (setf *current-room* (load-room room-to-edit :spawn-actors-p nil))
-    (setf *current-room* (load-room-int room-to-edit nil :spawn-actors-p nil))
+    (setf *current-room* (load-room-int room-to-edit nil :spawn-actors-p nil)
+          *camera* (make-camera (fetus:display-width) (fetus:display-height)))
 
     (do ((entry-mode :blocks)
          (slice-cursor (make-iso-point))
@@ -237,7 +239,7 @@ must already have been created with FETUS:CREATE-DISPLAY."
       (when dirty-floor-p
 	(paint-floor *current-room*)
 	(setf dirty-floor-p nil))
-      (redraw *current-room*)
+      (paint *current-room* *camera*)
 
       (dolist (spawn (cdr (assoc :actors
 				 (cdr (archetype-of *current-room*)))))

@@ -6,15 +6,16 @@
   (:export #:paint
            #:update
            #:notify)
+  ;; Camera
+  (:export #:make-camera
+           #:follow)
   (:shadow #:room)
   (:export #:sinkf
 	   #:clampf
 	   #:half
 	   #:quarter
 	   #:iso-project-point
-	   ;; XXX shouldn't be here
-	   #:update-camera
-	   ;; actor
+           ;; actor
 	   #:actor
 	   #:initialize-actor-data
 	   #:create-actor-manager
@@ -38,14 +39,15 @@
 	   #:initialize-tiles
 	   #:initialize-room-data
 	   #:load-room-int
-	   #:redraw
-	   #:room
+           #:room
            #:width-of
 	   #:depth-of
-	   #:border-collision
-	   ;; room-editor
-           #:room-editor
            #:wallhack))
+
+(defpackage :aequus-noctis/editor
+  (:use :cl :anaphora :aequus-noctis)
+  (:shadow #:room)
+  (:export #:room-editor))
 
 (in-package :aequus-noctis)
 (5am:def-suite unit :description "Fast-running tests")

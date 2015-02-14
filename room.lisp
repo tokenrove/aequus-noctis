@@ -58,7 +58,8 @@ Prerenders floor, adds fixed blocks to SPRITE-MANAGER, and optionally
     (when spawn-actors-p
       (dolist (actor (cdr (assoc :actors (cdr archetype))))
         (add-actor-to-room room
-                           (spawn-actor-from-archetype (first actor)
+                           (spawn-actor-from-archetype room
+                                                       (first actor)
                                                        (iso-point-from-list (second actor))))))
     ;; XXX deal with physics constants here.
     (fetus:use-image-palette (image-of (aref *tiles* 1)))
@@ -88,24 +89,26 @@ Prerenders floor, adds fixed blocks to SPRITE-MANAGER, and optionally
 (defun remove-block-from-room (room block)
   (delete block (blocks-of room)))
 
-(defun width-of (room)
+(defmethod width-of ((room room))
   (array-dimension (floor-of room) 1))
 
-(defun depth-of (room)
+(defmethod depth-of ((room room))
   (array-dimension (floor-of room) 0))
 
 
-(defmethod redraw ((room room))
+(defmethod paint ((room room) (camera camera))
   (fetus:fill-background 65)            ; XXX genericize
-  (fetus:blit-image *floor-buffer*
-                    (- (car *camera*) (half (fetus:surface-w *floor-buffer*)))
-                    (+ (cdr *camera*) (half (fetus:surface-h *floor-buffer*))))
+  (with-slots (x y) camera
+    (fetus:blit-image *floor-buffer*
+                      (- x (half (fetus:surface-w *floor-buffer*)))
+                      (+ y (half (fetus:surface-h *floor-buffer*))
+                         (- (half (height-of camera))))))
   (with-slots (sprites) room
     (setf (fill-pointer sprites) 0)
     (loop for block across (blocks-of room)
-          do (update-sprite-coords sprites block))
+          do (update-sprite-coords sprites block camera))
     (loop for actor across (actors-of room)
-          do (update-sprite-coords sprites actor))
+          do (update-sprite-coords sprites actor camera))
     (setf sprites (stable-sort sprites
                                #'isometric-sprite-cmp
                                :key #'fetus:sprite-priority))

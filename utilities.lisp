@@ -2,18 +2,7 @@
 ;;; so-called utilities are really, at best, debugging utilities, and
 ;;; at worst, secretly editor/UI component helpers.
 
-(in-package :aequus-noctis)
-
-(defvar *camera* (cons 100 140))
-
-(defun update-camera (actor)
-  (multiple-value-bind (x y)
-      (iso-project-point (position-of actor))
-    (decf x (equinox:half (fetus:display-width)))
-    (decf y (equinox:half (fetus:display-height)))
-    (setf (car *camera*) (- x)
-	  (cdr *camera*) (- y))))
-
+(in-package :aequus-noctis/editor)
 
 (defun debugging-line-draw (point-1 point-2 origin)
   (multiple-value-bind (x1 y1)

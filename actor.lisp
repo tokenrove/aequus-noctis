@@ -75,12 +75,13 @@ values from *ACTOR-ARCHETYPES*."
 
 
 ;;; XXX this function does not pay attention to box position.
-(defun update-sprite-coords (sprites actor)
+(defun update-sprite-coords (sprites actor camera)
   "Update sprite screen coordinates from world coordinates."
   (with-slots (sprite position) actor
-   (multiple-value-bind (u v) (iso-project-point position)
-     (incf u (car *camera*))
-     (incf v (cdr *camera*))
+    (multiple-value-bind (u v) (iso-project-point position)
+      (with-slots (x y) camera
+        (incf u x)
+        (incf v y))
      (setf (fetus:sprite-x sprite) (- u (car (fetus:sprite-blit-offset sprite)))
            (fetus:sprite-y sprite) (- v (cdr (fetus:sprite-blit-offset sprite))))
      (setf (fetus:sprite-priority sprite) actor)

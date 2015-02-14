@@ -10,3 +10,7 @@
 
 (defgeneric notify (who where what &key &allow-other-keys)
   (:documentation "Sends a game event message."))
+
+(defgeneric width-of (object))
+(defgeneric height-of (object))
+(defgeneric depth-of (object))
