@@ -101,11 +101,10 @@ Prerenders floor, adds fixed blocks to SPRITE-MANAGER, and optionally
 
 (defmethod paint ((room room) (camera camera))
   (fetus:fill-background (fetus:get-local-color (backdrop-of room)))
-  (with-slots (x y) camera
+  (with-slots (x y height) camera
     (fetus:blit-image *floor-buffer*
                       (- x (half (fetus:surface-w *floor-buffer*)))
-                      (+ y (half (fetus:surface-h *floor-buffer*))
-                         (- (half (height-of camera))))))
+                      y))
   (with-slots (sprites) room
     (setf (fill-pointer sprites) 0)
     (loop for block across (blocks-of room)
@@ -140,8 +139,6 @@ with the actor manager."
 
 ;;;; FLOORS
 
-#+equinox:wallhack(defvar *wall-image* (load-image "art/mansion/walls/greytile.pcx"))
-
 (defun paint-floor (room)
   "function PAINT-FLOOR
 
@@ -154,13 +151,13 @@ paints from back to front."
 	 (v-extent (depth-of room))
 	 (h-offs 0) (v-offs 0) (h-max 0) (v-max 0))
 
-    (setf h-max (+ (* h-extent 64) (* v-extent 32))) ;; XXX constants
-    (setf v-max (+ (* h-extent 20) (* v-extent 20)))
+    (setf h-max (* h-extent 64)) ;; XXX constants
+    (setf v-max (* v-extent 32))
     (incf h-max 64)
     (incf v-max 64)
     (setf h-offs (half h-max))
-    (setf v-offs (half v-max))
-    
+    (setf v-offs (+ (half v-max) 128))
+
     ;; blit offset
     (decf v-offs 8)
 
@@ -169,12 +166,8 @@ paints from back to front."
     (setf *floor-buffer* (fetus:new-image-buffer h-max v-max))
     (fetus:fill-background 0 *floor-buffer*)
 
-    #+equinox:wallhack(paint-walls-internal (floor-of room)
-			  *floor-buffer* 
-			  h-extent h-offs
-			  v-extent v-offs)
     (paint-floor-internal (floor-of room)
-			  *floor-buffer* 
+                          *floor-buffer*
 			  h-extent h-offs
 			  v-extent v-offs)))
 
@@ -185,61 +178,20 @@ paints from back to front."
 		 for tile = (let ((idx (aref floor z x)))
 			      (when (plusp idx) (aref *tiles* idx)))
 		 when tile
-		 do (setf (iso-point-x pt) (* +tile-size+ x)
-			  (iso-point-y pt) -16
-			  (iso-point-z pt) (* +tile-size+ z))
-		 (multiple-value-bind (u v)
-		     (iso-project-point pt)
-		   (let* ((sprite (sprite-of (archetype-of tile)))
-			  (blit-offset (cadr (assoc :blit-offset sprite))))
-		     (decf u (car blit-offset))
-		     (decf v (cdr blit-offset))
-		     (incf u h-offs)
-		     (incf v v-offs)
-                     (fetus:blit-image (image-of tile) u v
-                                       :destination buffer)))
-		 ;;else if (and (> x 0) (> z 0)) do
-		 #+equinox:wallhack(setf (iso-point-x pt) (* +tile-size+ x)
-		       (iso-point-y pt) -16
-		       (iso-point-z pt) (* +tile-size+ z))
-		 #+equinox:wallhack(multiple-value-bind (u v)
-		     (iso-project-point pt)
-		   (decf u 32)
-		   ;;(decf v (cdr blit-offset))
-		   (incf u h-offs)
-		   (incf v v-offs)
-		   (blit-image *wall-image* u v :src-rect '(0 0 64 144) :destination buffer)))))
-
-#+equinox:wallhack(defun paint-walls-internal (floor buffer h-extent h-offs v-extent v-offs)
-  (loop for z from (1- v-extent) downto 0
-	with pt = (make-iso-point)
-	with x = (1- h-extent)
-	do
-	(setf (iso-point-x pt) (* +tile-size+ x)
-	      (iso-point-y pt) -16
-	      (iso-point-z pt) (* +tile-size+ z))
-	(multiple-value-bind (u v)
-	    (iso-project-point pt)
-	  (decf u 32)
-	  ;;(decf v (cdr blit-offset))
-	  (incf u h-offs)
-	  (incf v v-offs)
-	  (blit-image *wall-image* u v :src-rect '(0 0 64 144) :destination buffer)))
-  (loop for x from (1- h-extent) downto 0
-	with pt = (make-iso-point)
-	with z = (1- v-extent)
-	do
-	(setf (iso-point-x pt) (* +tile-size+ x)
-	      (iso-point-y pt) -16
-	      (iso-point-z pt) (* +tile-size+ z))
-	(multiple-value-bind (u v)
-	    (iso-project-point pt)
-	  (decf u 32)
-	  ;;(decf v (cdr blit-offset))
-	  (incf u h-offs)
-	  (incf v v-offs)
-	  (blit-image *wall-image* u v :src-rect '(0 0 64 144) :destination buffer))))
-
+                   do (setf (iso-point-x pt) (* +tile-size+ x)
+                            (iso-point-y pt) 0
+                            (iso-point-z pt) (* +tile-size+ z))
+                      (multiple-value-bind (u v)
+                          (iso-project-point pt)
+                        (incf v +tile-size+)
+                        (let* ((sprite (sprite-of (archetype-of tile)))
+                               (blit-offset (cadr (assoc :blit-offset sprite))))
+                          (decf u (car blit-offset))
+                          (decf v (cdr blit-offset))
+                          (incf u h-offs)
+                          (incf v v-offs)
+                          (fetus:blit-image (image-of tile) u v
+                                            :destination buffer))))))
 
 (defmethod sprite-of ((archetype list))
   (cdr (assoc :sprite (cdr archetype))))

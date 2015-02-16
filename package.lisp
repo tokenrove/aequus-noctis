@@ -41,8 +41,7 @@
 	   #:load-room-int
            #:room
            #:width-of
-	   #:depth-of
-           #:wallhack))
+           #:depth-of))
 
 (defpackage :aequus-noctis/editor
   (:use :cl :anaphora :aequus-noctis)

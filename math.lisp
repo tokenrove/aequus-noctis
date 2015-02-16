@@ -108,11 +108,9 @@ reduce it to within those bounds, inclusive."
 Returns two values, X and Y in screen coordinates.  This is *before*
 camera positioning."
   (let ((sx (- (half (iso-point-x p)) (half (iso-point-z p))))
-        (sy (- (half (fetus:display-height))
-	       (+ (iso-point-y p)
+        (sy (- (+ (iso-point-y p)
 		  (quarter (iso-point-x p))
 		  (quarter (iso-point-z p))))))
-;    (decf sy (half (display-height)))
     (values (round sx) (round sy))))
 
 ;;; XXX this and the following functions should have non-consing
