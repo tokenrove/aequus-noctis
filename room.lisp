@@ -36,10 +36,13 @@
            :initform (make-array *max-actors-per-room* :adjustable nil :fill-pointer 0 :element-type 'actor))
    (sprites
     :initform (make-array (+ *max-blocks-per-room* *max-actors-per-room*) :adjustable nil :fill-pointer 0 :element-type 'fetus:sprite))
+   (backdrop :accessor backdrop-of :initarg :backdrop
+             :documentation "The flat RGBA color underneath everything else.")
    (archetype :accessor archetype-of)
    (name :accessor room-name))
   (:documentation "ROOM encapsulates the concept of a location; a
-floor, fixed blocks (set), and actors."))
+floor, fixed blocks (set), and actors.")
+  (:default-initargs :backdrop #xff101010))
 
 ;; define make-room from plan
 
@@ -97,7 +100,7 @@ Prerenders floor, adds fixed blocks to SPRITE-MANAGER, and optionally
 
 
 (defmethod paint ((room room) (camera camera))
-  (fetus:fill-background 65)            ; XXX genericize
+  (fetus:fill-background (fetus:get-local-color (backdrop-of room)))
   (with-slots (x y) camera
     (fetus:blit-image *floor-buffer*
                       (- x (half (fetus:surface-w *floor-buffer*)))
