@@ -63,8 +63,7 @@ actor."
 		    (iso-point-y (position-of bob))))
 	(setf (contact-surface-of alice) bob))
 
-      (notify bob room :contact :with alice :axis lsa :impulse impulse)
-      (notify alice room :contact :with alice :axis lsa :impulse impulse))
+      (notify bob room :contact :with alice :axis lsa :impulse impulse))
     t))
 
 (defun collision-response (alice lsa impulse)
