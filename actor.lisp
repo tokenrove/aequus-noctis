@@ -19,11 +19,13 @@
    (velocity :accessor velocity-of :initform (make-iso-point))
    (box :accessor box-of :initarg :box)
    (contact-surface :accessor contact-surface-of :initform nil)
+   (friction :accessor friction-of :initarg :friction)
    (facing :accessor facing-of :initform :east))
   (:documentation "An ACTOR is an object that exists at the game-logic
 level persistently.  Actors have handlers that are called at each time
 slice in the game, handlers that are called in response to collisions,
-and physical properties."))
+and physical properties.")
+  (:default-initargs :friction 0.25))
 
 ;;; Fall-back handlers
 (defmethod update ((who actor) where time-elapsed)

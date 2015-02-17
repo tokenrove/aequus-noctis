@@ -9,13 +9,6 @@
 (in-package :aequus-noctis)
 
 ;;; XXX Each of these constants is totally arbitrary.
-(defparameter *air-friction* 0.25
-  "Resistance against actors while in the air.")
-(defparameter *ground-friction* 0.25
-  "Friction on the floor.  Note that this parameter will not be here
-forever as friction becomes delegated to surfaces.")
-(defparameter *gravity* -0.5
-  "Gravity affecting actors.")
 (defparameter *terminal-velocity* 16
   "Terminal velocity (currently, in any direction).")
 
@@ -31,10 +24,11 @@ actor."
 
   (detect-collisions body room)
 
-  (let ((friction (if (contact-surface-of body) *ground-friction* *air-friction*)))
-    (sinkf (iso-point-x (velocity-of body)) friction)
-    (sinkf (iso-point-z (velocity-of body)) friction))
-  (incf (iso-point-y (velocity-of body)) *gravity*))
+  (awhen (contact-surface-of body)
+    (let ((friction (friction-of it)))
+      (sinkf (iso-point-x (velocity-of body)) friction)
+      (sinkf (iso-point-z (velocity-of body)) friction)))
+  (incf (iso-point-y (velocity-of body)) (gravity-of room)))
 
 
 (defun detect-collisions (alice room)

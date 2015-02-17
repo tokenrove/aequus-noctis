@@ -39,10 +39,11 @@
    (backdrop :accessor backdrop-of :initarg :backdrop
              :documentation "The flat RGBA color underneath everything else.")
    (archetype :accessor archetype-of)
+   (gravity :accessor gravity-of :initarg :gravity)
    (name :accessor room-name))
   (:documentation "ROOM encapsulates the concept of a location; a
 floor, fixed blocks (set), and actors.")
-  (:default-initargs :backdrop #xff101010))
+  (:default-initargs :backdrop #xff101010 :gravity -0.25))
 
 ;; define make-room from plan
 
