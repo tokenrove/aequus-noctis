@@ -26,7 +26,6 @@
       (fetus/test:with-dummy-sdl
         (fetus:with-display ()
           (setf actor (make-instance 'test-actor
-                                     :type :test
                                      :position #I(0 0 0)
                                      :sprite (fetus:new-sprite-from-alist '((:image "t/block.pcx")
                                                                             (:blit-offset (0 . 0))

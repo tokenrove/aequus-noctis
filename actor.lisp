@@ -14,8 +14,7 @@
 
 ;; XXX add documentation for these slots.
 (defclass actor ()
-  ((type :reader actor-type :initarg :type :initform (error "Actors need types."))
-   (sprite :accessor sprite-of :initarg :sprite)
+  ((sprite :accessor sprite-of :initarg :sprite)
    (position :accessor position-of :initarg :position)
    (velocity :accessor velocity-of :initform (make-iso-point))
    (box :accessor box-of :initarg :box)
@@ -68,6 +67,5 @@ and physical properties."))
 (defmethod print-object ((actor actor) stream)
   (flet ((maybe-unbound (o s) (if (slot-boundp o s) (slot-value o s) :unbound)))
     (print-unreadable-object (actor stream :type t :identity t)
-      (format stream "TYPE(~A) POSITION(~A)"
-              (maybe-unbound actor 'type)
+      (format stream "POSITION(~A)"
               (maybe-unbound actor 'position)))))

@@ -194,12 +194,20 @@ paints from back to front."
 (defun position-hash-key (x z)
   (complex x z))
 
+(defclass impassable-body (actor) ())
+;;; While I'd prefer to name these WALL, FLOOR, and CEILING, the
+;;; inevitable conflicts with CL:FLOOR and so on are ones I'd like to
+;;; avoid dealing with.
+(defclass wall-object (impassable-body) ())
+(defclass floor-object (impassable-body) ())
+(defclass ceiling-object (impassable-body) ())
+
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defvar *wall-objects* (make-hash-table)))
 (defun make-wall-object (x z)
   (let ((objects *wall-objects*))
     (unless (gethash (position-hash-key x z) objects)
-      (let ((wall (make-instance 'actor :type :wall
+      (let ((wall (make-instance 'wall-object
 				 :position #I((* x +tile-size+) 0
 					      (* z +tile-size+))
 				 :box (make-box :position #I(0 0 0)
@@ -214,7 +222,7 @@ paints from back to front."
 (defun make-floor-object (x z)
   (let ((objects *floor-objects*))
     (unless (gethash (position-hash-key x z) objects)
-      (let ((floor (make-instance 'actor :type :floor)))
+      (let ((floor (make-instance 'floor-object)))
 	(setf (position-of floor) #I((* x +tile-size+) -16
 				     (* z +tile-size+))
 	      (box-of floor) (make-box :position #I(0 0 0)
@@ -230,7 +238,7 @@ paints from back to front."
 (defun make-ceiling-object (x z)
   (let ((objects *ceiling-objects*))
     (unless (gethash (position-hash-key x z) objects)
-      (let ((ceiling (make-instance 'actor :type :ceiling)))
+      (let ((ceiling (make-instance 'ceiling-object)))
 	(setf (position-of ceiling) #I((* x +tile-size+)
 					  *room-highest-point*
 					  (* z +tile-size+))
@@ -254,7 +262,7 @@ paints from back to front."
     (add-block-to-room room actor)))
 
 (defun make-slice-object (archetype x y z)
-  (let ((block (make-instance 'actor :type :block)))
+  (let ((block (make-instance 'impassable-body)))
     (setf (position-of block) #I((* x +tile-size+)
 				 (* y *slice-height-increment*)
 				 (* z +tile-size+)))

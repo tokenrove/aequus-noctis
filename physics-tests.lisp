@@ -31,7 +31,6 @@
         (fetus:with-display ()
           (initialize-tiles)
           (setf lower-actor (make-instance 'physics-test-actor
-                                           :type :test
                                            :position #I(0 0 0)
                                                  :sprite (fetus:new-sprite-from-alist '((:image "t/block.pcx")
                                                                                         (:blit-offset (0 . 0))
@@ -39,7 +38,6 @@
                                                                                         (:animations ((:default (0 . 60))))))
                                                  :box (make-box :position #I(0 0 0) :dimensions #I(10 10 10)))
                 upper-actor (make-instance 'physics-test-actor
-                                           :type :test
                                            :position #I(0 11 0)
                                                  :sprite (fetus:new-sprite-from-alist '((:image "t/block.pcx")
                                                                                         (:blit-offset (0 . 0))
