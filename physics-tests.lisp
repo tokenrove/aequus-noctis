@@ -49,7 +49,7 @@
           (let ((*room-set*
                   '((:TEST (:NAME . "Test")
                       (:FLOOR . #2A((1)))
-                      (:BLOCKS) (:ACTORS) (:EXITS) (:PLAYER-SPAWN)))))
+                      (:BLOCKS)))))
             (load-room-int room :test))
           (add-actor-to-room room lower-actor)
           (add-actor-to-room room upper-actor)

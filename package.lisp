@@ -7,38 +7,42 @@
            #:update
            #:notify)
   ;; Camera
-  (:export #:make-camera
+  (:export #:camera
+           #:make-camera
            #:follow)
   (:shadow #:room)
   (:export #:sinkf
 	   #:clampf
 	   #:half
 	   #:quarter
-	   #:iso-project-point
+           #:iso-project-point
+           #:iso-point-component
+           #:make-iso-point
+           #:iso-point-x
+           #:iso-point-y
+           #:iso-point-z
            ;; actor
-	   #:actor
+           #:actor
+           #:sprite-of
+           #:facing-of
+           #:box-of
 	   #:initialize-actor-data
 	   #:create-actor-manager
 	   #:spawn-actor-from-archetype
 	   #:isometric-sprite-cmp
 	   #:check-room-change
-	   ;; generic actor handlers
-	   #:create-do-nothing-handler
-	   #:create-human-input-handler
-	   #:create-floating-block-handler
-	   #:create-monster-handler
-	   #:create-key-handler
-	   #:pushable-block-handler
-	   #:player-contact-handler
-	   #:loot-contact-handler
-	   #:monster-contact-handler
-	   ;; physics
+           ;; physics
 	   #:update-physics
-	   #:penetrating-p
+           #:penetrating-p
+           #:position-of
+           #:velocity-of
+           #:contact-surface-of
+           #:apply-impulse
 	   ;; room
 	   #:initialize-tiles
 	   #:initialize-room-data
-	   #:load-room-int
+           #:load-room-int
+           #:add-actor-to-room
            #:room
            #:width-of
            #:depth-of))

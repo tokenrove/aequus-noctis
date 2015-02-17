@@ -88,8 +88,7 @@ must already have been created with FETUS:CREATE-DISPLAY."
   (fetus:with-font (*default-font* "other-data/pph.ttf" 18)
     (initialize-tiles)
     ;; XXX
-    ;;  (setf *current-room* (load-room room-to-edit :spawn-actors-p nil))
-    (setf *current-room* (load-room-int room-to-edit nil :spawn-actors-p nil)
+    (setf *current-room* (load-room-int room-to-edit nil)
           *camera* (make-camera (fetus:display-width) (fetus:display-height)))
 
     (do ((entry-mode :blocks)

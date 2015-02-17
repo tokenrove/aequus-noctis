@@ -46,7 +46,7 @@ floor, fixed blocks (set), and actors.")
 
 ;; define make-room from plan
 
-(defun load-room-int (room name &key (spawn-actors-p t))
+(defun load-room-int (room name)
   "Loads the named room from *ROOM-SET*, into *CURRENT-ROOM*.
 Prerenders floor, adds fixed blocks to SPRITE-MANAGER, and optionally
  (based on SPAWN-ACTORS-P) spawns actors associated with room."
@@ -58,12 +58,7 @@ Prerenders floor, adds fixed blocks to SPRITE-MANAGER, and optionally
     (setf (floor-of room) (cdr (assoc :floor (cdr archetype)))
           (room-name room) (cdr (assoc :name (cdr archetype)))
           (archetype-of room) archetype)
-    (when spawn-actors-p
-      (dolist (actor (cdr (assoc :actors (cdr archetype))))
-        (add-actor-to-room room
-                           (spawn-actor-from-archetype room
-                                                       (first actor)
-                                                       (iso-point-from-list (second actor))))))
+
     ;; XXX deal with physics constants here.
     (fetus:use-image-palette (image-of (aref *tiles* 1)))
 

@@ -32,48 +32,6 @@ and physical properties."))
 (defmethod notify ((who actor) where what &key &allow-other-keys)
   (declare (ignore who where what)))
 
-(defun initialize-actor-data (&optional (archetypes-file "archetypes.sexp"))
-  (let ((*package* (find-package :equinox))
-	(*read-eval* nil))
-    (with-open-file (stream archetypes-file)
-      (setf *actor-archetypes* (read stream)))))
-
-(defvar *actor-archetypes* nil
-  "The actor archetypes table, which defines the default values for
-many parameters of an actor.")
-
-
-(defun spawn-actor-from-archetype (room name position)
-  "function SPAWN-ACTOR-FROM-ARCHETYPE room name position => actor
-
-Creates (and returns) a new ACTOR instance, reading default member
-values from *ACTOR-ARCHETYPES*."
-  (let* ((archetype (or (cdr (find name *actor-archetypes* :key #'car))
-			(error "archetype ~A not found" name)))
-	 (box (destructuring-bind ((x y z) (w h d))
-		  (cdr (assoc :box archetype))
-		(make-box :position (make-iso-point :x x :y y :z z)
-			  :dimensions (make-iso-point :x w :y h :z d))))
-	 (actor (make-instance 'actor :type name
-                                      :position position
-                                      :sprite (fetus:new-sprite-from-alist
-                                               (cdr (assoc :sprite archetype)))
-                                      :box box)))
-    (add-actor-to-room room actor)
-    actor))
-
-(defun initialize-actor-from-archetype (actor position archetype)
-  (let* ((box (destructuring-bind ((x y z) (w h d))
-		  (cdr (assoc :box archetype))
-		(make-box :position (make-iso-point :x x :y y :z z)
-			  :dimensions (make-iso-point :x w :y h :z d)))))
-    (setf (position-of actor) position
-          (sprite-of actor) (fetus:new-sprite-from-alist
-			     (cdr (assoc :sprite archetype)))
-	  (box-of actor) box)
-    actor))
-
-
 ;;; XXX this function does not pay attention to box position.
 (defun update-sprite-coords (sprites actor camera)
   "Update sprite screen coordinates from world coordinates."
