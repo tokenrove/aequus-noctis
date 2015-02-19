@@ -12,62 +12,58 @@
 (defparameter *slice-height-increment* 32)
 (defparameter *floor-tile-height* 16)
 
-(defvar *floor-buffer* nil)
-;;; Note that the actors list gets eval'd -- this allows random
-;;; placement and other fun.
-(defvar *room-set* nil)
-(defvar *current-room*)
-
-
-(defun initialize-room-data (&optional (rooms-file "rooms.sexp"))
-  (with-open-file (stream rooms-file)
-    (setf *room-set* (read stream))))
-
 (defparameter *max-blocks-per-room* 256)
 (defparameter *max-actors-per-room* 64)
+
+(defclass blueprint ()
+  ((floor :accessor floor-of :initarg :floor)
+   (blocks :accessor blocks-of :initarg :blocks))
+  (:documentation "The plan for a ROOM."))
+
+(defun blueprint-from-alist (alist)
+  (make-instance 'blueprint
+                 :floor (cdr (assoc :floor (cdr alist)))
+                 :blocks (cdr (assoc :blocks (cdr alist)))))
 
 ;;; XXX the idea of player-spawn, exits, and name are going to be moved to
 ;;; the scenario logic.
 (defclass room ()
-  ((floor :accessor floor-of)
+  (floor-buffer wall-objects floor-objects ceiling-objects
    (blocks :accessor blocks-of
-           :initform (make-array *max-blocks-per-room* :adjustable nil :fill-pointer 0 :element-type 'actor))
+           :initform (make-array *max-blocks-per-room*
+                                 :adjustable nil :fill-pointer 0 :element-type 'actor))
    (actors :accessor actors-of
-           :initform (make-array *max-actors-per-room* :adjustable nil :fill-pointer 0 :element-type 'actor))
+           :initform (make-array *max-actors-per-room*
+                                 :adjustable nil :fill-pointer 0 :element-type 'actor))
    (sprites
-    :initform (make-array (+ *max-blocks-per-room* *max-actors-per-room*) :adjustable nil :fill-pointer 0 :element-type 'fetus:sprite))
+    :initform (make-array (+ *max-blocks-per-room* *max-actors-per-room*)
+                          :adjustable nil :fill-pointer 0 :element-type 'fetus:sprite))
    (backdrop :accessor backdrop-of :initarg :backdrop
              :documentation "The flat RGBA color underneath everything else.")
-   (archetype :accessor archetype-of)
-   (gravity :accessor gravity-of :initarg :gravity)
-   (name :accessor room-name))
+   (blueprint :accessor blueprint-of :initarg :blueprint)
+   (gravity :accessor gravity-of :initarg :gravity))
   (:documentation "ROOM encapsulates the concept of a location; a
 floor, fixed blocks (set), and actors.")
   (:default-initargs :backdrop #xff101010 :gravity -0.25))
 
 ;; define make-room from plan
 
-(defun load-room-int (room name)
-  "Loads the named room from *ROOM-SET*, into *CURRENT-ROOM*.
-Prerenders floor, adds fixed blocks to SPRITE-MANAGER, and optionally
- (based on SPAWN-ACTORS-P) spawns actors associated with room."
-  (setf *wall-objects* (make-hash-table)
-	*floor-objects* (make-hash-table)
-	*ceiling-objects* (make-hash-table))
-  (let ((archetype (assoc name *room-set*)))
-    (assert archetype () "Couldn't find room ~A." name)
-    (setf (floor-of room) (cdr (assoc :floor (cdr archetype)))
-          (room-name room) (cdr (assoc :name (cdr archetype)))
-          (archetype-of room) archetype)
+(defun make-room (blueprint)
+  "Returns a newly created ROOM based on BLUEPRINT.
+Prerenders floor and adds fixed blocks."
+  (make-instance 'room :blueprint blueprint))
 
-    ;; XXX deal with physics constants here.
-    (fetus:use-image-palette (image-of (aref *tiles* 1)))
+(defmethod initialize-instance :after ((room room) &key)
+  (with-slots (wall-objects floor-objects ceiling-objects) room
+    (setf wall-objects (make-hash-table)
+          floor-objects (make-hash-table)
+          ceiling-objects (make-hash-table)))
 
-    (paint-floor room)
-
-    (dolist (block (cdr (assoc :blocks (cdr archetype))))
-      (give-block-sprite room block))
-    room))
+  ;; XXX deal with physics constants here.
+  (fetus:use-image-palette (image-of (aref *tiles* 1)))
+  (paint-floor room)
+  (dolist (block (blocks-of (blueprint-of room)))
+    (give-block-sprite room block)))
 
 (defun add-actor-to-room (room actor)
   (vector-push actor (actors-of room)))
@@ -89,18 +85,19 @@ Prerenders floor, adds fixed blocks to SPRITE-MANAGER, and optionally
   (delete block (blocks-of room)))
 
 (defmethod width-of ((room room))
-  (array-dimension (floor-of room) 1))
+  (array-dimension (floor-of (blueprint-of room)) 1))
 
 (defmethod depth-of ((room room))
-  (array-dimension (floor-of room) 0))
+  (array-dimension (floor-of (blueprint-of room)) 0))
 
 
 (defmethod paint ((room room) (camera camera))
   (fetus:fill-background (fetus:get-local-color (backdrop-of room)))
   (with-slots (x y height) camera
-    (fetus:blit-image *floor-buffer*
-                      (- x (half (fetus:surface-w *floor-buffer*)))
-                      y))
+    (with-slots (floor-buffer) room
+     (fetus:blit-image floor-buffer
+                       (- x (half (fetus:surface-w floor-buffer)))
+                       y)))
   (with-slots (sprites) room
     (setf (fill-pointer sprites) 0)
     (loop for block across (blocks-of room)
@@ -157,15 +154,15 @@ paints from back to front."
     ;; blit offset
     (decf v-offs 8)
 
-    (when *floor-buffer*
-      (fetus:free-image *floor-buffer*))
-    (setf *floor-buffer* (fetus:new-image-buffer h-max v-max))
-    (fetus:fill-background 0 *floor-buffer*)
-
-    (paint-floor-internal (floor-of room)
-                          *floor-buffer*
-			  h-extent h-offs
-			  v-extent v-offs)))
+    (with-slots (floor-buffer) room
+      (when (slot-boundp room 'floor-buffer)
+        (fetus:free-image floor-buffer))
+      (setf floor-buffer (fetus:new-image-buffer h-max v-max))
+      (fetus:fill-background 0 floor-buffer)
+      (paint-floor-internal (floor-of (blueprint-of room))
+                            floor-buffer
+                            h-extent h-offs
+                            v-extent v-offs))))
 
 (defun paint-floor-internal (floor buffer h-extent h-offs v-extent v-offs)
   (loop for z from (1- v-extent) downto 0
@@ -203,54 +200,39 @@ paints from back to front."
 (defclass floor-object (impassable-body) ())
 (defclass ceiling-object (impassable-body) ())
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (defvar *wall-objects* (make-hash-table)))
 (defun make-wall-object (x z)
-  (let ((objects *wall-objects*))
-    (unless (gethash (position-hash-key x z) objects)
-      (let ((wall (make-instance 'wall-object
-				 :position #I((* x +tile-size+) 0
-					      (* z +tile-size+))
-				 :box (make-box :position #I(0 0 0)
-						:dimensions #I(+tile-size+
-							       *room-highest-point*
-							       +tile-size+)))))
-	(setf (gethash (position-hash-key x z) objects) wall)))
-    (gethash (position-hash-key x z) objects)))
-
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (defvar *floor-objects* (make-hash-table)))
+  (make-instance 'wall-object
+                 :position #I((* x +tile-size+) 0 (* z +tile-size+))
+                 :box (make-box :position #I(0 0 0)
+                                :dimensions #I(+tile-size+
+                                               *room-highest-point*
+                                               +tile-size+))))
 (defun make-floor-object (x z)
-  (let ((objects *floor-objects*))
-    (unless (gethash (position-hash-key x z) objects)
-      (let ((floor (make-instance 'floor-object)))
-	(setf (position-of floor) #I((* x +tile-size+) -16
-				     (* z +tile-size+))
-	      (box-of floor) (make-box :position #I(0 0 0)
-				       :dimensions #I(+tile-size+
-						      16
-						      +tile-size+))
-	      (gethash (position-hash-key x z) *floor-objects*) floor)))
-    (gethash (position-hash-key x z) objects)))
-
-
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (defvar *ceiling-objects* (make-hash-table)))
+  (make-instance 'floor-object
+                 :position #I((* x +tile-size+) -16
+                              (* z +tile-size+))
+                 :box (make-box :position #I(0 0 0)
+                                :dimensions #I(+tile-size+
+                                               16
+                                               +tile-size+))))
 (defun make-ceiling-object (x z)
-  (let ((objects *ceiling-objects*))
-    (unless (gethash (position-hash-key x z) objects)
-      (let ((ceiling (make-instance 'ceiling-object)))
-	(setf (position-of ceiling) #I((* x +tile-size+)
-					  *room-highest-point*
-					  (* z +tile-size+))
-	      (box-of ceiling)
-	      (make-box :position #I(0 0 0)
-			:dimensions #I(+tile-size+
-				       64
-				       +tile-size+))
-	      (gethash (position-hash-key x z) objects) ceiling)))
-    (gethash (position-hash-key x z) objects)))
+  (make-instance 'ceiling-object
+                 :position #I((* x +tile-size+)
+                              *room-highest-point*
+                              (* z +tile-size+))
+                 :box
+                 (make-box :position #I(0 0 0)
+                           :dimensions #I(+tile-size+
+                                          64
+                                          +tile-size+))))
 
+(defun get-room-object (room type x z)
+  (asif (gethash (position-hash-key x z) (slot-value room type))
+        it
+        (setf it (ecase type
+                   (wall-objects (make-wall-object x z))
+                   (floor-objects (make-floor-object x z))
+                   (ceiling-objects (make-ceiling-object x z))))))
 
 ;;;; BLOCKS
 

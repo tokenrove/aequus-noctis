@@ -41,9 +41,12 @@
 	   ;; room
 	   #:initialize-tiles
 	   #:initialize-room-data
-           #:load-room-int
+           #:make-room
+           #:blueprint-from-alist
            #:add-actor-to-room
            #:room
+           #:blueprint
+           #:blueprint-of
            #:width-of
            #:depth-of))
 

@@ -92,19 +92,19 @@ actor."
   (when (or (minusp x) (minusp z)
 	    (>= x (width-of room))
 	    (>= z (depth-of room))
-	    (= (aref (floor-of room) z x) 0))
-    (let ((wall-obj (make-wall-object x z)))
+            (= (aref (floor-of (blueprint-of room)) z x) 0))
+    (let ((wall-obj (get-room-object room 'wall-objects x z)))
       (when (actor<->actor-collision alice wall-obj room)
         (notify alice room :border-collision :at (make-iso-point :x x :z z)))))
 
   (when (<= (iso-point-y (position-of alice)) *room-lowest-point*)
-    (let ((floor-obj (make-floor-object x z)))
+    (let ((floor-obj (get-room-object room 'floor-objects x z)))
       (actor<->actor-collision alice floor-obj room)))
 
   (when (>= (+ (iso-point-y (position-of alice))
 	       (iso-point-y (box-dimensions (box-of alice))))
 	    *room-highest-point*)
-    (let ((ceiling-obj (make-ceiling-object x z)))
+    (let ((ceiling-obj (get-room-object room 'ceiling-objects x z)))
       (actor<->actor-collision alice ceiling-obj room))))
 
 
@@ -144,7 +144,7 @@ actor."
        (awhen (sign-of (funcall f (velocity-of alice)))
 	 (decf (iso-point-component axis (position-of alice)) it)
 	 (decf (iso-point-component axis impulse) it))))
-    
+
     (values impulse (find-axis-of-separation alice bob))))
 
 

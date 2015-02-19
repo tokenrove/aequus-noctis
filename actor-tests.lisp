@@ -11,8 +11,7 @@
 
 #+5am
 (5am:test actor-handler-is-called
-  (let ((room (make-instance 'room))
-        (*tile-archetypes* '(("null entry")
+  (let ((*tile-archetypes* '(("null entry")
                              ("bare floor"
                               (:image "t/floor.pcx")
                               (:sprite
@@ -33,11 +32,11 @@
                                                                             (:animations ((:default (0 . 60))))))
                                      :box (make-box :position #I(0 0 0) :dimensions #I(10 10 10))))
           (initialize-tiles)
-          (let ((*room-set*
-                  '((:TEST (:NAME . "Test")
-                      (:FLOOR . #2A((1)))
-                      (:BLOCKS)))))
-            (load-room-int room :test))
-          (add-actor-to-room room actor)
-          (update room nil 0.2))))
+          (let* ((blueprint
+                   (blueprint-from-alist '(:TEST (:NAME . "Test")
+                                           (:FLOOR . #2A((1)))
+                                           (:BLOCKS))))
+                 (room (make-room blueprint)))
+            (add-actor-to-room room actor)
+            (update room nil 0.2)))))
     (5am:is-true (slot-value actor 'handler-called-p))))
