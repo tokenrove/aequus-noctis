@@ -26,6 +26,4 @@
   (when (slot-boundp camera 'target)
     (with-slots (x y width height target) camera
       (multiple-value-bind (tx ty) (iso-project-point (position-of target))
-        (decf tx (half width))
-        (decf ty (half height))
-        (setf x (- tx) y (- ty))))))
+        (setf x (- (half width) tx) y (- (half height) ty))))))
