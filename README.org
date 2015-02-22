@@ -1,0 +1,4 @@
+* Don't use this!
+
+This is the support library for an incomplete game written in 2004,
+[[http://github.com/tokenrove/demon-of-the-fall][Demon of the Fall]].  See the README in that repo.
